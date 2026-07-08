@@ -81,7 +81,7 @@ jobs:
 
       - name: Build Windows installers
         shell: pwsh
-        run: pnpm tauri build --ci --bundles msi,nsis --config tauri.windows-preview.conf.json
+        run: pnpm tauri build --ci --bundles msi nsis --config tauri.windows-preview.conf.json
 
       - name: Collect release assets
         shell: pwsh
