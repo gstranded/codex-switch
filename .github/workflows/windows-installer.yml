@@ -1,4 +1,4 @@
-name: Build Windows Installer
+name: Build Windows Release
 
 on:
   workflow_dispatch:
@@ -17,7 +17,7 @@ concurrency:
 
 jobs:
   build-windows-x64:
-    name: Windows x64 MSI
+    name: Windows x64 installers and portable zip
     runs-on: windows-2022
     env:
       CARGO_INCREMENTAL: "0"
@@ -79,42 +79,78 @@ jobs:
           }
           '@ | Set-Content -Path tauri.windows-preview.conf.json -Encoding UTF8
 
-      - name: Build MSI installer
+      - name: Build Windows installers
         shell: pwsh
-        run: pnpm tauri build --ci --bundles msi --config tauri.windows-preview.conf.json
+        run: pnpm tauri build --ci --bundles msi,nsis --config tauri.windows-preview.conf.json
 
-      - name: Collect installer
+      - name: Collect release assets
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
           New-Item -ItemType Directory -Force -Path release-assets | Out-Null
 
+          $safeVersion = $env:RELEASE_TAG.TrimStart('v')
+
           $msi = Get-ChildItem -Path 'src-tauri/target/release/bundle' -Recurse -Filter '*.msi' |
             Sort-Object LastWriteTime -Descending |
             Select-Object -First 1
-
           if ($null -eq $msi) {
             throw 'No MSI installer found under src-tauri/target/release/bundle'
           }
+          $msiDest = "Codex-Switch-$safeVersion-Windows-x64.msi"
+          Copy-Item $msi.FullName (Join-Path release-assets $msiDest)
+          Write-Host "MSI installer copied to release-assets/$msiDest"
 
-          $safeVersion = $env:RELEASE_TAG.TrimStart('v')
-          $dest = "Codex-Switch-$safeVersion-Windows-x64.msi"
-          Copy-Item $msi.FullName (Join-Path release-assets $dest)
-          Write-Host "Installer copied to release-assets/$dest"
+          $nsis = Get-ChildItem -Path 'src-tauri/target/release/bundle' -Recurse -Filter '*.exe' |
+            Where-Object { $_.FullName -match '\\nsis\\' -or $_.Name -match 'setup|installer' } |
+            Sort-Object LastWriteTime -Descending |
+            Select-Object -First 1
+          if ($null -eq $nsis) {
+            throw 'No NSIS setup EXE found under src-tauri/target/release/bundle'
+          }
+          $nsisDest = "Codex-Switch-$safeVersion-Windows-x64-Setup.exe"
+          Copy-Item $nsis.FullName (Join-Path release-assets $nsisDest)
+          Write-Host "NSIS installer copied to release-assets/$nsisDest"
+
+          $exePath = 'src-tauri/target/release/codex-switch.exe'
+          if (!(Test-Path $exePath)) {
+            throw "Portable exe not found at $exePath"
+          }
+          $portableDir = 'release-assets/Codex-Switch-Portable'
+          New-Item -ItemType Directory -Force -Path $portableDir | Out-Null
+          Copy-Item $exePath $portableDir
+          @(
+            '# Codex Switch portable build marker',
+            'portable=true'
+          ) | Set-Content -Path (Join-Path $portableDir 'portable.ini') -Encoding UTF8
+          $portableZip = "release-assets/Codex-Switch-$safeVersion-Windows-x64-Portable.zip"
+          Compress-Archive -Path "$portableDir/*" -DestinationPath $portableZip -Force
+          Remove-Item -Recurse -Force $portableDir
+          Write-Host "Portable zip created: $portableZip"
+
+          $checksumPath = Join-Path release-assets 'SHA256SUMS.txt'
+          Get-ChildItem -Path release-assets -File |
+            Where-Object { $_.Name -ne 'SHA256SUMS.txt' } |
+            Sort-Object Name |
+            ForEach-Object {
+              $hash = (Get-FileHash -Algorithm SHA256 -LiteralPath $_.FullName).Hash.ToLowerInvariant()
+              "$hash  $($_.Name)"
+            } | Set-Content -Path $checksumPath -Encoding ASCII
+          Get-Content $checksumPath
 
       - name: Upload workflow artifact
         uses: actions/upload-artifact@v6
         with:
-          name: Codex-Switch-${{ inputs.release_tag }}-Windows-x64-msi
-          path: release-assets/*.msi
+          name: Codex-Switch-${{ inputs.release_tag }}-Windows-x64-release-assets
+          path: release-assets/*
           if-no-files-found: error
 
-      - name: Upload installer to GitHub Release
+      - name: Upload assets to GitHub Release
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           $ErrorActionPreference = 'Stop'
-          foreach ($asset in Get-ChildItem -Path release-assets -Filter '*.msi') {
+          foreach ($asset in Get-ChildItem -Path release-assets -File) {
             gh release upload $env:RELEASE_TAG $asset.FullName --clobber --repo $env:GITHUB_REPOSITORY
           }
