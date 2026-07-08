@@ -5,11 +5,11 @@
   <a href="README.md">中文</a>
 </p>
 
-Codex Switch is a Codex provider switcher focused on provider switching plus automatic local history bucket synchronization.
+Codex Switch is a Codex provider switcher forked from CC Switch. Its main purpose is simple: keep your official Codex/ChatGPT login state and custom API providers in one place, switch between them with one click, and keep local Codex conversations visible after the switch.
 
-## Downloads
+## Latest Download
 
-Download builds from [Releases](https://github.com/gstranded/codex-switch/releases).
+Download the latest build from [Releases / Latest](https://github.com/gstranded/codex-switch/releases/latest).
 
 Current Windows x64 assets:
 
@@ -18,24 +18,37 @@ Current Windows x64 assets:
 - `Codex-Switch-0.1.0-Windows-x64-Portable.zip`: portable build. Extract and run `codex-switch.exe`.
 - `SHA256SUMS.txt`: checksums for release assets.
 
-This is a preview build and is not code-signed yet. Windows may show an unknown publisher or SmartScreen warning.
+The installer is not code-signed yet. Windows may show an unknown publisher or SmartScreen warning.
 
-## What Changed
+## Core Features
 
-- Renamed the app/fork to Codex Switch.
-- Supports provider/config management and one-click switching.
-- Added automatic Codex history synchronization after Codex provider switching.
-- Rewrites local Codex `.jsonl` session metadata and `state_5.sqlite` thread provider buckets to the active provider.
-- Creates backups before rewriting history data.
+- **Official login state management**: save and restore the official Codex login state for OpenAI / ChatGPT account workflows.
+- **API provider management**: add custom Base URLs, API keys, models, and provider names in one place.
+- **One-click switching**: select a saved provider and apply it to the active Codex configuration.
+- **Conversation history sync**: after switching to either an official login state or an API provider, Codex Switch syncs local Codex history buckets so older conversations remain visible.
+- **Automatic backups**: creates backups before rewriting local history indexes.
+- **Legacy data compatibility**: keeps the compatibility paths needed to reuse existing CC Switch data during this fork stage.
 
-## History Sync Behavior
+## Typical Workflow
 
-After a Codex switch succeeds, Codex Switch:
+1. Save an official Codex/ChatGPT login state in Codex Switch, or add your API provider.
+2. For API providers, enter the Base URL, API key, model, and provider name.
+3. Click the configuration you want to use and switch.
+4. Open Codex. The active provider is changed, and existing local conversations should still appear under the current provider.
+
+This lets you maintain official login, OpenRouter, DeepSeek, and other OpenAI-compatible API services side by side without manually editing config files or losing the history list after each switch.
+
+## Why History Stays Visible
+
+Codex stores local conversation history by `model_provider` bucket. Many switchers only update the active `config.toml`, so after switching to a new provider, Codex looks at a different bucket and older conversations appear to be gone.
+
+After a provider switch succeeds, Codex Switch automatically:
 
 1. Reads the active `model_provider` from the live Codex `config.toml`.
 2. Finds known provider buckets from live config, saved provider configs, JSONL session metadata, SQLite thread rows, and built-in legacy provider ids.
-3. Rewrites matching local history bucket ids to the active provider id.
-4. Skips backup creation when there is nothing to change.
+3. Rewrites `session_meta.payload.model_provider` in Codex `.jsonl` session metadata to the active provider.
+4. Rewrites `threads.model_provider` in Codex `state_5.sqlite` to the active provider.
+5. Skips backup creation when there is nothing to synchronize.
 
 Backups are stored under:
 
@@ -43,32 +56,17 @@ Backups are stored under:
 ~/.cc-switch/backups/codex-auto-history-sync-v1/<timestamp>/
 ```
 
-The app intentionally keeps the legacy `~/.cc-switch` storage path for now, so existing provider data can still be reused during this fork stage.
+The app intentionally keeps the legacy `~/.cc-switch` storage path for now to preserve compatibility with existing configuration and history data. A future `~/.codex-switch` migration should include compatibility migration logic.
 
-## Limitation
+## Notes
 
-This makes old conversations visible under the active provider bucket. It does not guarantee every old conversation can be resumed successfully across providers, because Codex may store provider-specific or encrypted content in session data.
+- The goal is to keep old conversations visible in the Codex history list after provider switching.
+- Resuming very old conversations across providers may still be affected by Codex internal data, provider-specific fields, or encrypted content.
+- The current release focuses on Windows x64.
+- The installer is unsigned, so Windows may ask you to allow it on first run.
 
-## Local Development
+## Credits
 
-```powershell
-pnpm install
-pnpm typecheck
-pnpm tauri dev
-```
+Codex Switch is developed as a fork of CC Switch. Thanks to the original CC Switch project and contributors for the foundation and inspiration.
 
-For full backend checks on Windows, install Visual Studio Build Tools with the C++ workload and Windows SDK, then run:
-
-```powershell
-cargo check --manifest-path src-tauri\Cargo.toml
-```
-
-## Verification Status
-
-- GitHub Actions CI passed frontend typecheck, formatting, unit tests, backend `cargo fmt`, `cargo clippy`, and `cargo test`.
-- The Windows x64 release workflow successfully built and uploaded release assets.
-- Full local Windows backend build/check was not completed on this machine because the Windows C++/SDK linker environment is missing.
-
-## Project Note
-
-Codex Switch keeps the legacy data-compatibility paths needed to avoid losing existing provider configuration and session history during migration.
+This project keeps the compatibility logic that matters while continuing to iterate on official login state switching, API provider switching, and Codex history synchronization.

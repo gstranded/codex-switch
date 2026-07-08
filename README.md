@@ -5,38 +5,50 @@
   <strong>中文</strong>
 </p>
 
-Codex Switch 是面向 Codex 的供应商切换工具，核心目标是解决 Codex 在不同 `model_provider` 之间切换后，本地聊天记录不可见的问题。
+Codex Switch 是一个基于 CC Switch 二次开发的 Codex 供应商切换工具。它的核心目标很直接：在一个地方维护你的官方 Codex/ChatGPT 登录态和自定义 API Provider，然后一键切换，并尽量让本地聊天记录在切换后继续可见，不再因为 provider 改了就“掉历史”。
 
-## 下载
+## 下载最新版本
 
-请到 [Releases](https://github.com/gstranded/codex-switch/releases) 下载。
+请到 [Releases / Latest](https://github.com/gstranded/codex-switch/releases/latest) 下载最新版。
 
 Windows x64 当前提供：
 
 - `Codex-Switch-0.1.0-Windows-x64-Setup.exe`：常规安装包，推荐大多数用户使用。
 - `Codex-Switch-0.1.0-Windows-x64.msi`：MSI 安装包，适合偏好 MSI 或企业部署的场景。
-- `Codex-Switch-0.1.0-Windows-x64-Portable.zip`：便携版，解压后运行 `codex-switch.exe`，不会安装到系统。
+- `Codex-Switch-0.1.0-Windows-x64-Portable.zip`：便携版，解压后运行 `codex-switch.exe`。
 - `SHA256SUMS.txt`：校验文件完整性。
 
-当前是 preview 版本，Windows 可能提示“未知发布者”或 SmartScreen，这是因为安装包尚未做代码签名。
+当前安装包尚未代码签名，Windows 可能提示“未知发布者”或 SmartScreen。
 
-## 主要改动
+## 核心功能
 
-- 应用名称改为 Codex Switch。
-- 支持供应商添加、配置管理和一键切换流程。
-- Codex 供应商切换成功后，自动同步本地聊天记录的 provider bucket。
-- 会重写 Codex `.jsonl` 会话元数据里的 `session_meta.payload.model_provider`。
-- 会重写 Codex `state_5.sqlite` 中 `threads.model_provider` 的 provider bucket。
-- 重写前会创建备份。
+- **官方登录态管理**：保存和恢复 Codex 官方登录状态，适合使用 OpenAI / ChatGPT 官方账号的场景。
+- **API Provider 管理**：添加自定义 Base URL、API Key、模型和 provider 配置，集中维护不同供应商。
+- **一键切换**：在 Codex Switch 里选择目标配置后，一键写入当前 Codex 配置。
+- **聊天记录同步**：切换到官方登录态或任意 API Provider 后，自动同步本地 Codex 历史记录的 provider bucket，让旧对话继续出现在历史列表里。
+- **自动备份**：改写聊天记录索引前会创建备份，避免同步过程不可追溯。
+- **兼容旧数据**：现阶段保留必要的 legacy 数据目录和迁移逻辑，尽量复用已有 CC Switch 配置。
 
-## 聊天记录同步逻辑
+## 典型使用方式
 
-Codex 供应商切换成功后，Codex Switch 会：
+1. 在 Codex Switch 中保存一个官方 Codex/ChatGPT 登录态，或者添加你的 API Provider。
+2. 为 API Provider 填写 Base URL、API Key、模型和名称。
+3. 点击需要使用的配置并切换。
+4. 打开 Codex，当前 provider 已切换，原来的本地聊天记录仍会同步到当前 provider 下显示。
 
-1. 从当前 Codex `config.toml` 读取激活中的 `model_provider`。
+这意味着你可以同时维护官方账号、OpenRouter、DeepSeek、其他兼容 OpenAI API 的服务，按需一键切换，而不是每次手动改配置、丢历史列表。
+
+## 聊天记录为什么不会掉
+
+Codex 的本地聊天历史会按 `model_provider` 分 bucket。很多切换工具只改当前 `config.toml`，所以 Codex 切到新 provider 后，只会看新 bucket，旧聊天记录就像消失了一样。
+
+Codex Switch 在供应商切换成功后会自动做同步：
+
+1. 读取当前 Codex `config.toml` 中激活的 `model_provider`。
 2. 从 live config、已保存供应商配置、JSONL 会话元数据、SQLite thread 行和内置历史 provider id 中收集旧 bucket。
-3. 把匹配到的本地历史 bucket 改写到当前激活的 provider id。
-4. 如果没有任何内容需要同步，则不会创建多余备份。
+3. 将 Codex `.jsonl` 会话元数据里的 `session_meta.payload.model_provider` 改写到当前 provider。
+4. 将 Codex `state_5.sqlite` 中 `threads.model_provider` 改写到当前 provider。
+5. 没有内容需要同步时，不会创建多余备份。
 
 备份路径：
 
@@ -44,33 +56,17 @@ Codex 供应商切换成功后，Codex Switch 会：
 ~/.cc-switch/backups/codex-auto-history-sync-v1/<timestamp>/
 ```
 
-现阶段仍保留 legacy `~/.cc-switch` 作为配置目录，方便复用已有供应商数据。后续如果彻底迁移到 `~/.codex-switch`，需要做兼容迁移逻辑。
+现阶段仍保留 legacy `~/.cc-switch` 作为配置目录，主要是为了兼容旧配置和历史数据。后续如果迁移到 `~/.codex-switch`，会做兼容迁移。
 
-## 限制
+## 注意事项
 
-这个功能的目标是让旧会话在切换供应商后重新出现在 Codex 历史列表中。它不能保证所有旧会话都能跨供应商继续恢复运行，因为 Codex 可能在会话数据里保存 provider 相关或加密内容。
+- 这个功能的目标是让旧会话在切换供应商后重新出现在 Codex 历史列表中。
+- 跨 provider 恢复非常旧的会话仍可能受 Codex 内部数据、provider 特定字段或加密内容影响。
+- 当前版本优先支持 Windows x64。
+- 安装包暂未签名，首次安装可能需要手动允许运行。
 
-## 本地开发
+## 致谢
 
-```powershell
-pnpm install
-pnpm typecheck
-pnpm tauri dev
-```
+Codex Switch 基于 CC Switch 二次开发。感谢 CC Switch 原项目和贡献者提供的基础能力与灵感。
 
-Windows 本地完整后端检查需要安装 Visual Studio Build Tools C++ workload 和 Windows SDK：
-
-```powershell
-cargo check --manifest-path src-tauri\Cargo.toml
-```
-
-## 验证状态
-
-- GitHub Actions CI 已通过 frontend typecheck、format、unit tests。
-- GitHub Actions CI 已通过 backend `cargo fmt`、`cargo clippy`、`cargo test`。
-- Windows x64 release workflow 已成功构建并上传安装包。
-- 本机没有完整 Windows C++/SDK 链接环境，因此没有在本机完成 Windows 后端构建。
-
-## 项目说明
-
-Codex Switch 会继续保留必要的 legacy 数据兼容逻辑，避免已有配置和会话历史在迁移过程中丢失。
+本项目会保留必要的兼容逻辑，并围绕 Codex 官方登录态、API Provider 切换和聊天记录同步继续迭代。
