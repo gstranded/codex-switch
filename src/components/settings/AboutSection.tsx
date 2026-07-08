@@ -430,13 +430,13 @@ export function AboutSection({ isPortable }: AboutSectionProps) {
 
       if (!displayVersion) {
         await settingsApi.openExternal(
-          "https://github.com/ghsunshinez-dotcom/codex-switch/releases",
+          "https://github.com/gstranded/codex-switch/releases",
         );
         return;
       }
 
       await settingsApi.openExternal(
-        `https://github.com/ghsunshinez-dotcom/codex-switch/releases/tag/${displayVersion}`,
+        `https://github.com/gstranded/codex-switch/releases/tag/${displayVersion}`,
       );
     } catch (error) {
       console.error("[AboutSection] Failed to open release notes", error);
@@ -861,7 +861,7 @@ export function AboutSection({ isPortable }: AboutSectionProps) {
               variant="outline"
               size="sm"
               onClick={() =>
-                settingsApi.openExternal("https://github.com/ghsunshinez-dotcom/codex-switch")
+                settingsApi.openExternal("https://github.com/gstranded/codex-switch")
               }
               className="h-8 gap-1.5 text-xs"
             >
@@ -874,7 +874,7 @@ export function AboutSection({ isPortable }: AboutSectionProps) {
               size="sm"
               onClick={() =>
                 settingsApi.openExternal(
-                  "https://github.com/ghsunshinez-dotcom/codex-switch",
+                  "https://github.com/gstranded/codex-switch",
                 )
               }
               className="h-8 gap-1.5 text-xs"

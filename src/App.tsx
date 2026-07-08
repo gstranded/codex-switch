@@ -1190,7 +1190,7 @@ function App() {
               <div className="flex items-center gap-2">
                 <div className="relative inline-flex items-center">
                   <a
-                    href="https://github.com/ghsunshinez-dotcom/codex-switch"
+                    href="https://github.com/gstranded/codex-switch"
                     target="_blank"
                     rel="noreferrer"
                     className={cn(

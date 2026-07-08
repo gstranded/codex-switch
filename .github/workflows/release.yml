@@ -611,7 +611,7 @@ jobs:
           body: |
             ## Codex Switch ${{ github.ref_name }}
 
-            Repository: [github.com/ghsunshinez-dotcom/codex-switch](https://github.com/ghsunshinez-dotcom/codex-switch)
+            Repository: [github.com/gstranded/codex-switch](https://github.com/gstranded/codex-switch)
 
             Claude Code 供应商切换工具
 

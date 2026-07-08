@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "Codex provider switcher with automatic local history bucket sync"
 authors = ["Jason Young"]
 license = "MIT"
-repository = "https://github.com/ghsunshinez-dotcom/codex-switch"
+repository = "https://github.com/gstranded/codex-switch"
 edition = "2021"
 rust-version = "1.85.0"
 
