@@ -1,6 +1,6 @@
 [Desktop Entry]
 Type=Application
-Name=CC Switch
+Name=Codex Switch
 Comment=All-in-One Assistant for Claude Code, Codex & Gemini CLI
 Exec=cc-switch
 Icon=com.ccswitch.desktop

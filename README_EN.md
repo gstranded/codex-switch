@@ -5,7 +5,7 @@
   <a href="README.md">中文</a>
 </p>
 
-Codex Switch is a CC Switch fork focused on Codex provider switching plus automatic local history bucket synchronization.
+Codex Switch is a Codex provider switcher focused on provider switching plus automatic local history bucket synchronization.
 
 ## Downloads
 
@@ -23,7 +23,7 @@ This is a preview build and is not code-signed yet. Windows may show an unknown 
 ## What Changed
 
 - Renamed the app/fork to Codex Switch.
-- Kept the existing CC Switch provider/config management flow.
+- Supports provider/config management and one-click switching.
 - Added automatic Codex history synchronization after Codex provider switching.
 - Rewrites local Codex `.jsonl` session metadata and `state_5.sqlite` thread provider buckets to the active provider.
 - Creates backups before rewriting history data.
@@ -43,7 +43,7 @@ Backups are stored under:
 ~/.cc-switch/backups/codex-auto-history-sync-v1/<timestamp>/
 ```
 
-The app intentionally keeps the existing `~/.cc-switch` storage path for now, so existing CC Switch provider data can still be reused during this fork stage.
+The app intentionally keeps the legacy `~/.cc-switch` storage path for now, so existing provider data can still be reused during this fork stage.
 
 ## Limitation
 
@@ -69,8 +69,6 @@ cargo check --manifest-path src-tauri\Cargo.toml
 - The Windows x64 release workflow successfully built and uploaded release assets.
 - Full local Windows backend build/check was not completed on this machine because the Windows C++/SDK linker environment is missing.
 
-## Upstream
+## Project Note
 
-This is a fork of CC Switch:
-
-https://github.com/farion1231/cc-switch
+Codex Switch keeps the legacy data-compatibility paths needed to avoid losing existing provider configuration and session history during migration.

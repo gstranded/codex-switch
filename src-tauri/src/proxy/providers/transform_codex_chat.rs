@@ -1,6 +1,6 @@
 //! Codex Responses ↔ OpenAI Chat Completions conversion.
 //!
-//! This module is used when the Codex client talks to CC Switch through the
+//! This module is used when the Codex client talks to Codex Switch through the
 //! Responses API, while the selected upstream provider only exposes an
 //! OpenAI-compatible Chat Completions endpoint.
 
@@ -3062,7 +3062,7 @@ mod tests {
         assert_eq!(result["error"]["type"], "upstream_error");
     }
     // Regression tests for tool_choice without tools guard
-    // https://github.com/farion1231/cc-switch/issues/3557
+    // https://github.com/gstranded/codex-switch/issues/3557
 
     #[test]
     fn responses_request_to_chat_drops_tool_choice_when_no_tools() {

@@ -4,7 +4,7 @@ Codex Switch adds automatic Codex history synchronization after switching Codex 
 
 ## Behavior
 
-- Codex providers can still be added and switched through the normal provider flow inherited from CC Switch.
+- Codex providers can still be added and switched through the normal provider flow.
 - After a Codex provider switch succeeds, the app reads the active `model_provider` from the live Codex `config.toml`.
 - It collects known local Codex history provider buckets from:
   - live `config.toml`

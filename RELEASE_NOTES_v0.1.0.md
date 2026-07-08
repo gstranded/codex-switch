@@ -1,6 +1,6 @@
 # Codex Switch v0.1.0 preview
 
-这是基于 CC Switch 的 Codex provider 切换预览版，重点是切换 Codex 供应商后自动同步本地聊天记录 bucket。
+这是 Codex provider 切换预览版，重点是切换 Codex 供应商后自动同步本地聊天记录 bucket。
 
 ## 下载
 

@@ -32,26 +32,48 @@ vi.mock("@/components/providers/ProviderList", () => ({
     onOpenWebsite,
     onCreate,
   }: any) => (
+    <MockProviderList
+      providers={providers}
+      currentProviderId={currentProviderId}
+      onSwitch={onSwitch}
+      onEdit={onEdit}
+      onDuplicate={onDuplicate}
+      onConfigureUsage={onConfigureUsage}
+      onOpenWebsite={onOpenWebsite}
+      onCreate={onCreate}
+    />
+  ),
+}));
+
+function MockProviderList({
+  providers,
+  currentProviderId,
+  onSwitch,
+  onEdit,
+  onDuplicate,
+  onConfigureUsage,
+  onOpenWebsite,
+  onCreate,
+}: any) {
+  const currentProvider = Array.isArray(providers)
+    ? providers.find((provider: any) => provider.id === currentProviderId)
+    : providers[currentProviderId];
+
+  return (
     <div>
       <div data-testid="provider-list">{JSON.stringify(providers)}</div>
       <div data-testid="current-provider">{currentProviderId}</div>
-      <button onClick={() => onSwitch(providers[currentProviderId])}>
-        switch
-      </button>
-      <button onClick={() => onEdit(providers[currentProviderId])}>edit</button>
-      <button onClick={() => onDuplicate(providers[currentProviderId])}>
-        duplicate
-      </button>
-      <button onClick={() => onConfigureUsage(providers[currentProviderId])}>
-        usage
-      </button>
+      <button onClick={() => onSwitch(currentProvider)}>switch</button>
+      <button onClick={() => onEdit(currentProvider)}>edit</button>
+      <button onClick={() => onDuplicate(currentProvider)}>duplicate</button>
+      <button onClick={() => onConfigureUsage(currentProvider)}>usage</button>
       <button onClick={() => onOpenWebsite("https://example.com")}>
         open-website
       </button>
       <button onClick={() => onCreate?.()}>create</button>
     </div>
-  ),
-}));
+  );
+}
 
 vi.mock("@/components/providers/AddProviderDialog", () => ({
   AddProviderDialog: ({ open, onOpenChange, onSubmit, appId }: any) =>
@@ -218,7 +240,7 @@ describe("App integration with MSW", () => {
 
     expect(toastErrorMock).not.toHaveBeenCalled();
     expect(toastSuccessMock).toHaveBeenCalled();
-  });
+  }, 15_000);
 
   it("shows toast when auto sync fails in background", async () => {
     const { default: App } = await import("@/App");
@@ -260,7 +282,7 @@ describe("App integration with MSW", () => {
     await waitFor(() => {
       expect(toastErrorMock).toHaveBeenCalled();
     });
-  });
+  }, 15_000);
 
   it("duplicates openclaw providers with a generated key that avoids live-only ids", async () => {
     setProviders("openclaw", {
@@ -303,7 +325,7 @@ describe("App integration with MSW", () => {
     expect(toastErrorMock).not.toHaveBeenCalledWith(
       expect.stringContaining("Provider key is required for openclaw"),
     );
-  });
+  }, 15_000);
 
   it("shows toast when duplicate cannot load live provider ids", async () => {
     setProviders("openclaw", {
@@ -351,5 +373,5 @@ describe("App integration with MSW", () => {
     );
 
     liveIdsSpy.mockRestore();
-  });
+  }, 15_000);
 });

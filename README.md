@@ -5,7 +5,7 @@
   <strong>中文</strong>
 </p>
 
-Codex Switch 是基于 CC Switch 二开的 Codex 供应商切换工具，核心目标是解决 Codex 在不同 `model_provider` 之间切换后，本地聊天记录不可见的问题。
+Codex Switch 是面向 Codex 的供应商切换工具，核心目标是解决 Codex 在不同 `model_provider` 之间切换后，本地聊天记录不可见的问题。
 
 ## 下载
 
@@ -23,7 +23,7 @@ Windows x64 当前提供：
 ## 主要改动
 
 - 应用名称改为 Codex Switch。
-- 保留 CC Switch 的供应商添加、配置管理和切换流程。
+- 支持供应商添加、配置管理和一键切换流程。
 - Codex 供应商切换成功后，自动同步本地聊天记录的 provider bucket。
 - 会重写 Codex `.jsonl` 会话元数据里的 `session_meta.payload.model_provider`。
 - 会重写 Codex `state_5.sqlite` 中 `threads.model_provider` 的 provider bucket。
@@ -44,7 +44,7 @@ Codex 供应商切换成功后，Codex Switch 会：
 ~/.cc-switch/backups/codex-auto-history-sync-v1/<timestamp>/
 ```
 
-现阶段仍保留 `~/.cc-switch` 作为配置目录，方便复用已有 CC Switch 的供应商数据。后续如果彻底迁移到 `~/.codex-switch`，需要做兼容迁移逻辑。
+现阶段仍保留 legacy `~/.cc-switch` 作为配置目录，方便复用已有供应商数据。后续如果彻底迁移到 `~/.codex-switch`，需要做兼容迁移逻辑。
 
 ## 限制
 
@@ -71,8 +71,6 @@ cargo check --manifest-path src-tauri\Cargo.toml
 - Windows x64 release workflow 已成功构建并上传安装包。
 - 本机没有完整 Windows C++/SDK 链接环境，因此没有在本机完成 Windows 后端构建。
 
-## 上游项目
+## 项目说明
 
-本项目基于 CC Switch：
-
-https://github.com/farion1231/cc-switch
+Codex Switch 会继续保留必要的 legacy 数据兼容逻辑，避免已有配置和会话历史在迁移过程中丢失。
