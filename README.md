@@ -51,7 +51,8 @@ cargo check --manifest-path src-tauri\Cargo.toml
 
 - `cargo fmt --all -- --check` passed during the fork session with Rust 1.95.
 - Frontend TypeScript check passed via `node_modules/.bin/tsc.cmd --noEmit` during the fork session.
-- Full local backend build/check was not completed on this machine because the Windows C++/SDK linker environment is missing.
+- GitHub Actions CI on `main` passed frontend typecheck, formatting, unit tests, backend `cargo fmt`, `cargo clippy`, and `cargo test`.
+- Full local Windows backend build/check was not completed on this machine because the Windows C++/SDK linker environment is missing.
 
 ## Upstream
 

@@ -38,7 +38,8 @@ This sync makes historical conversations visible under the active provider bucke
 - Verified during this fork session:
   - `cargo fmt --all -- --check` passed with Rust 1.95.
   - Frontend TypeScript check passed via `node_modules/.bin/tsc.cmd --noEmit`.
-- Full `cargo check` could not complete on this machine because the Windows C++/SDK linker environment is missing:
+- GitHub Actions CI passed frontend typecheck, formatting, unit tests, backend `cargo fmt`, `cargo clippy`, and `cargo test`.
+- Full local Windows `cargo check` could not complete on this machine because the Windows C++/SDK linker environment is missing:
   - MSVC path fails at missing `link.exe` / Windows SDK libraries.
   - GNU self-contained fallback reaches Rust dependency compilation but fails in the temporary `dlltool`/assembler path.
 - To run the full backend check locally, install Visual Studio Build Tools with the C++ workload and Windows SDK, then run:

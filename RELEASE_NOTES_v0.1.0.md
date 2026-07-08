@@ -14,7 +14,8 @@ Fork of CC Switch focused on Codex provider switching with automatic local histo
 
 - `cargo fmt --all -- --check` passed during the fork session.
 - Frontend TypeScript check passed during the fork session.
-- Full local backend `cargo check` / build was not completed on this machine because the Windows C++ Build Tools / Windows SDK linker environment is missing.
+- GitHub Actions CI passed frontend typecheck, formatting, unit tests, backend `cargo fmt`, `cargo clippy`, and `cargo test`.
+- Full local Windows backend `cargo check` / build was not completed on this machine because the Windows C++ Build Tools / Windows SDK linker environment is missing.
 
 ## Caveat
 
