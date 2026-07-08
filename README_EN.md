@@ -11,14 +11,19 @@ Codex Switch is a Codex provider switcher forked from CC Switch. Its main purpos
 
 Download the latest build from [Releases / Latest](https://github.com/gstranded/codex-switch/releases/latest).
 
-Current Windows x64 assets:
+Current latest assets:
 
-- `Codex-Switch-0.1.0-Windows-x64-Setup.exe`: standard installer, recommended for most users.
-- `Codex-Switch-0.1.0-Windows-x64.msi`: MSI installer for users or deployment flows that prefer MSI.
-- `Codex-Switch-0.1.0-Windows-x64-Portable.zip`: portable build. Extract and run `codex-switch.exe`.
+- `Codex-Switch-0.2.0-Windows-x64-Setup.exe`: standard Windows installer, recommended for most Windows users.
+- `Codex-Switch-0.2.0-Windows-x64.msi`: Windows MSI installer for users or deployment flows that prefer MSI.
+- `Codex-Switch-0.2.0-Windows-x64-Portable.zip`: Windows portable build. Extract and run `codex-switch.exe`.
+- `Codex-Switch-0.2.0-macOS-universal.dmg`: macOS installer for both Apple Silicon and Intel Macs.
+- `Codex-Switch-0.2.0-macOS-universal.zip`: zipped macOS `.app` bundle.
+- `Codex-Switch-0.2.0-Linux-x64.AppImage`: portable Linux build. Mark it executable and run it.
+- `Codex-Switch-0.2.0-Linux-x64.deb`: Debian / Ubuntu package.
+- `Codex-Switch-0.2.0-Linux-x64.rpm`: Fedora / RHEL / openSUSE package.
 - `SHA256SUMS.txt`: checksums for release assets.
 
-The installer is not code-signed yet. Windows may show an unknown publisher or SmartScreen warning.
+This preview build is not code-signed or Apple-notarized yet. Windows may show an unknown publisher or SmartScreen warning; macOS may require right-clicking the app and choosing Open.
 
 ## Core Features
 
@@ -62,8 +67,9 @@ The app intentionally keeps the legacy `~/.cc-switch` storage path for now to pr
 
 - The goal is to keep old conversations visible in the Codex history list after provider switching.
 - Resuming very old conversations across providers may still be affected by Codex internal data, provider-specific fields, or encrypted content.
-- The current release focuses on Windows x64.
-- The installer is unsigned, so Windows may ask you to allow it on first run.
+- The current release provides Windows x64, macOS universal, and Linux x64 builds.
+- Installers are unsigned, so the OS may ask you to allow the app on first run.
+- Some Linux distributions may require FUSE for AppImage. If AppImage does not fit your system, use the `.deb` or `.rpm` package.
 
 ## Credits
 

@@ -1,6 +1,6 @@
 [package]
 name = "codex-switch"
-version = "0.1.0"
+version = "0.2.0"
 description = "Codex provider switcher with automatic local history bucket sync"
 authors = ["Jason Young"]
 license = "MIT"
