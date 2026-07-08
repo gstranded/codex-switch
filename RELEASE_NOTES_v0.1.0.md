@@ -2,6 +2,10 @@
 
 Fork of CC Switch focused on Codex provider switching with automatic local history bucket sync.
 
+## Download
+
+- Windows x64 installer: `Codex-Switch-0.1.0-Windows-x64.msi`
+
 ## Added
 
 - Auto-sync Codex session history after switching Codex providers.

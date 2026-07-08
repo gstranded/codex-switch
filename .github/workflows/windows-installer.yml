@@ -1,0 +1,120 @@
+name: Build Windows Installer
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Release tag to build and upload assets to"
+        required: true
+        default: "v0.1.0"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: windows-installer-${{ inputs.release_tag }}
+  cancel-in-progress: true
+
+jobs:
+  build-windows-x64:
+    name: Windows x64 MSI
+    runs-on: windows-2022
+    env:
+      CARGO_INCREMENTAL: "0"
+      CARGO_TERM_COLOR: always
+      RELEASE_TAG: ${{ inputs.release_tag }}
+    steps:
+      - name: Checkout release source
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.release_tag }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "20"
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 10.12.3
+          run_install: false
+
+      - name: Get pnpm store directory
+        id: pnpm-store
+        shell: pwsh
+        run: echo "path=$(pnpm store path --silent)" >> $env:GITHUB_OUTPUT
+
+      - name: Cache pnpm store
+        uses: actions/cache@v5
+        with:
+          path: ${{ steps.pnpm-store.outputs.path }}
+          key: windows-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: windows-pnpm-store-
+
+      - name: Cache Cargo registry and build
+        uses: actions/cache@v5
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            src-tauri/target
+          key: windows-cargo-${{ hashFiles('src-tauri/Cargo.lock') }}
+          restore-keys: windows-cargo-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Disable updater artifacts for unsigned preview build
+        shell: pwsh
+        run: |
+          @'
+          {
+            "bundle": {
+              "createUpdaterArtifacts": false
+            }
+          }
+          '@ | Set-Content -Path tauri.windows-preview.conf.json -Encoding UTF8
+
+      - name: Build MSI installer
+        shell: pwsh
+        run: pnpm tauri build --ci --bundles msi --config tauri.windows-preview.conf.json
+
+      - name: Collect installer
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          New-Item -ItemType Directory -Force -Path release-assets | Out-Null
+
+          $msi = Get-ChildItem -Path 'src-tauri/target/release/bundle' -Recurse -Filter '*.msi' |
+            Sort-Object LastWriteTime -Descending |
+            Select-Object -First 1
+
+          if ($null -eq $msi) {
+            throw 'No MSI installer found under src-tauri/target/release/bundle'
+          }
+
+          $safeVersion = $env:RELEASE_TAG.TrimStart('v')
+          $dest = "Codex-Switch-$safeVersion-Windows-x64.msi"
+          Copy-Item $msi.FullName (Join-Path release-assets $dest)
+          Write-Host "Installer copied to release-assets/$dest"
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v6
+        with:
+          name: Codex-Switch-${{ inputs.release_tag }}-Windows-x64-msi
+          path: release-assets/*.msi
+          if-no-files-found: error
+
+      - name: Upload installer to GitHub Release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          foreach ($asset in Get-ChildItem -Path release-assets -Filter '*.msi') {
+            gh release upload $env:RELEASE_TAG $asset.FullName --clobber --repo $env:GITHUB_REPOSITORY
+          }
