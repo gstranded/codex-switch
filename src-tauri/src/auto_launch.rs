@@ -88,10 +88,9 @@ mod tests {
     #[cfg(target_os = "macos")]
     #[test]
     fn test_get_macos_app_bundle_path_with_spaces() {
-        let exe_path =
-            std::path::Path::new(
-                "/Users/test/My Apps/Codex Switch.app/Contents/MacOS/Codex Switch",
-            );
+        let exe_path = std::path::Path::new(
+            "/Users/test/My Apps/Codex Switch.app/Contents/MacOS/Codex Switch",
+        );
         let result = get_macos_app_bundle_path(exe_path);
         assert_eq!(
             result,
