@@ -1601,7 +1601,7 @@ pub fn run() {
                         let url_str = url.to_string();
                         log::info!("RunEvent::Opened with URL: {url_str}");
 
-                        if is_supported_deeplink_url(url_str) {
+                        if is_supported_deeplink_url(&url_str) {
                             if crate::lightweight::is_lightweight_mode() {
                                 if let Err(e) = crate::lightweight::exit_lightweight_mode(app_handle)
                                 {
