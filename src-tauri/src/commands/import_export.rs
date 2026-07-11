@@ -5,12 +5,12 @@ use std::path::PathBuf;
 use tauri::State;
 use tauri_plugin_dialog::DialogExt;
 
-use crate::commands::sync_support::{
-    post_sync_warning_from_result, run_post_import_sync, success_payload_with_warning,
-};
 use crate::codex_history_archive::{
     export_codex_history_to_file, import_codex_history_from_file, CodexHistoryExportOutcome,
     CodexHistoryImportOutcome,
+};
+use crate::commands::sync_support::{
+    post_sync_warning_from_result, run_post_import_sync, success_payload_with_warning,
 };
 use crate::database::backup::BackupEntry;
 use crate::database::Database;
@@ -103,9 +103,9 @@ pub async fn import_codex_history_from_file_command(
     let db = state.db.clone();
     tauri::async_runtime::spawn_blocking(move || {
         let mut outcome = import_codex_history_from_file(PathBuf::from(filePath).as_path())?;
-        if let Err(error) = crate::codex_history_migration::sync_all_codex_history_to_active_provider(
-            db.as_ref(),
-        ) {
+        if let Err(error) =
+            crate::codex_history_migration::sync_all_codex_history_to_active_provider(db.as_ref())
+        {
             log::warn!("Codex chat history import completed but provider sync failed: {error}");
             outcome
                 .warnings
