@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
@@ -41,6 +41,9 @@ export function useProviderActions(
   const updateProviderMutation = useUpdateProviderMutation(activeApp);
   const deleteProviderMutation = useDeleteProviderMutation(activeApp);
   const switchProviderMutation = useSwitchProviderMutation(activeApp);
+  const [isCodexRestartPromptOpen, setIsCodexRestartPromptOpen] =
+    useState(false);
+  const [isRestartingCodexClient, setIsRestartingCodexClient] = useState(false);
 
   // Claude 插件同步逻辑
   const syncClaudePlugin = useCallback(
@@ -246,13 +249,23 @@ export function useProviderActions(
         }
 
         // 若已弹过 proxyRequired 警告则不再弹 success
+        if (activeApp === "codex") {
+          if (!proxyRequiredReason) {
+            toast.success(
+              t("notifications.codexRestartRequired", {
+                defaultValue: "切换成功，请重启客户端以生效",
+              }),
+              { closeButton: true },
+            );
+          }
+          setIsCodexRestartPromptOpen(true);
+          return;
+        }
+
         if (!proxyRequiredReason) {
           let messageKey = "notifications.switchSuccess";
           let defaultMessage = "切换成功！";
-          if (activeApp === "codex") {
-            messageKey = "notifications.codexRestartRequired";
-            defaultMessage = "切换成功，请重启客户端以生效";
-          } else if (activeApp === "claude-desktop") {
+          if (activeApp === "claude-desktop") {
             if (provider.meta?.claudeDesktopMode === "proxy") {
               messageKey = "notifications.claudeDesktopProxyRestartRequired";
               defaultMessage =
@@ -284,6 +297,31 @@ export function useProviderActions(
   );
 
   // 删除供应商
+  const restartCodexClient = useCallback(async () => {
+    if (isRestartingCodexClient) return;
+    setIsRestartingCodexClient(true);
+    try {
+      const result = await settingsApi.restartCodexClient();
+      toast.success(
+        t("notifications.codexRestarted", {
+          defaultValue: "Codex 已重启并加载新配置",
+          count: result.restartedProcesses,
+        }),
+        { closeButton: true },
+      );
+      setIsCodexRestartPromptOpen(false);
+    } catch (error) {
+      toast.error(
+        extractErrorMessage(error) ||
+          t("notifications.codexRestartFailed", {
+            defaultValue: "无法自动重启 Codex，请手动关闭后重新打开。",
+          }),
+      );
+    } finally {
+      setIsRestartingCodexClient(false);
+    }
+  }, [isRestartingCodexClient, t]);
+
   const deleteProvider = useCallback(
     async (id: string) => {
       await deleteProviderMutation.mutateAsync(id);
@@ -384,6 +422,10 @@ export function useProviderActions(
     deleteProvider,
     saveUsageScript,
     setAsDefaultModel,
+    isCodexRestartPromptOpen,
+    dismissCodexRestartPrompt: () => setIsCodexRestartPromptOpen(false),
+    restartCodexClient,
+    isRestartingCodexClient,
     isLoading:
       addProviderMutation.isPending ||
       updateProviderMutation.isPending ||

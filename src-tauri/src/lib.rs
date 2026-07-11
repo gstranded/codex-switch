@@ -5,6 +5,7 @@ mod claude_desktop_config;
 mod claude_mcp;
 mod claude_plugin;
 mod codex_config;
+mod codex_history_archive;
 mod codex_history_migration;
 mod codex_state_db;
 mod commands;
@@ -39,6 +40,10 @@ mod usage_script;
 
 pub use app_config::{AppType, InstalledSkill, McpApps, McpServer, MultiAppConfig, SkillApps};
 pub use codex_config::{get_codex_auth_path, get_codex_config_path, write_codex_live_atomic};
+pub use codex_history_archive::{
+    export_codex_history_to_file, import_codex_history_from_file, CodexHistoryExportOutcome,
+    CodexHistoryImportOutcome,
+};
 pub use commands::open_provider_terminal;
 pub use commands::*;
 pub use config::{get_claude_mcp_path, get_claude_settings_path, read_json_file};
@@ -1406,6 +1411,7 @@ pub fn run() {
             // Session usage sync
             commands::sync_session_usage,
             commands::get_usage_data_sources,
+            commands::restart_codex_client,
             // Stream health check
             commands::stream_check_provider,
             commands::stream_check_all_providers,
@@ -1417,6 +1423,10 @@ pub fn run() {
             commands::delete_session,
             commands::delete_sessions,
             commands::launch_session_terminal,
+            commands::export_codex_history_to_file_command,
+            commands::import_codex_history_from_file_command,
+            commands::save_codex_history_file_dialog,
+            commands::open_codex_history_file_dialog,
             commands::get_tool_versions,
             commands::run_tool_lifecycle_action,
             commands::probe_tool_installations,

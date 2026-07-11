@@ -26,6 +26,24 @@ export interface CodexUnifyHistoryRestoreResult {
   skippedReason?: string;
 }
 
+export interface CodexHistoryExportResult {
+  filePath: string;
+  sessionFiles: number;
+  stateDatabases: number;
+}
+
+export interface CodexHistoryImportResult {
+  importedSessionFiles: number;
+  skippedSessionFiles: number;
+  importedSessionIndexEntries: number;
+  importedStateThreads: number;
+  warnings: string[];
+}
+
+export interface CodexClientRestartResult {
+  restartedProcesses: number;
+}
+
 export interface WebDavSyncResult {
   status: string;
 }
@@ -51,6 +69,10 @@ export const settingsApi = {
 
   async restart(): Promise<boolean> {
     return await invoke("restart_app");
+  },
+
+  async restartCodexClient(): Promise<CodexClientRestartResult> {
+    return await invoke("restart_codex_client");
   },
 
   async installUpdateAndRestart(): Promise<boolean> {
@@ -130,6 +152,28 @@ export const settingsApi = {
 
   async importConfigFromFile(filePath: string): Promise<ConfigTransferResult> {
     return await invoke("import_config_from_file", { filePath });
+  },
+
+  async saveCodexHistoryFileDialog(
+    defaultName: string,
+  ): Promise<string | null> {
+    return await invoke("save_codex_history_file_dialog", { defaultName });
+  },
+
+  async openCodexHistoryFileDialog(): Promise<string | null> {
+    return await invoke("open_codex_history_file_dialog");
+  },
+
+  async exportCodexHistoryToFile(
+    filePath: string,
+  ): Promise<CodexHistoryExportResult> {
+    return await invoke("export_codex_history_to_file_command", { filePath });
+  },
+
+  async importCodexHistoryFromFile(
+    filePath: string,
+  ): Promise<CodexHistoryImportResult> {
+    return await invoke("import_codex_history_from_file_command", { filePath });
   },
 
   // ─── WebDAV sync ──────────────────────────────────────────

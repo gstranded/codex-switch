@@ -57,6 +57,7 @@ const providersApiUpdateMock = vi.fn();
 const providersApiUpdateTrayMenuMock = vi.fn();
 const settingsApiGetMock = vi.fn();
 const settingsApiApplyMock = vi.fn();
+const settingsApiRestartCodexClientMock = vi.fn();
 const openclawApiGetModelCatalogMock = vi.fn();
 const openclawApiGetDefaultModelMock = vi.fn();
 const openclawApiSetDefaultModelMock = vi.fn();
@@ -71,6 +72,8 @@ vi.mock("@/lib/api", () => ({
     get: (...args: unknown[]) => settingsApiGetMock(...args),
     applyClaudePluginConfig: (...args: unknown[]) =>
       settingsApiApplyMock(...args),
+    restartCodexClient: (...args: unknown[]) =>
+      settingsApiRestartCodexClientMock(...args),
   },
   openclawApi: {
     getModelCatalog: (...args: unknown[]) =>
@@ -115,6 +118,7 @@ beforeEach(() => {
   providersApiUpdateTrayMenuMock.mockReset();
   settingsApiGetMock.mockReset();
   settingsApiApplyMock.mockReset();
+  settingsApiRestartCodexClientMock.mockReset();
   openclawApiGetModelCatalogMock.mockReset();
   openclawApiGetDefaultModelMock.mockReset();
   openclawApiSetDefaultModelMock.mockReset();
@@ -196,6 +200,35 @@ describe("useProviderActions", () => {
       "切换成功，请重启客户端以生效",
       { closeButton: true },
     );
+    expect(result.current.isCodexRestartPromptOpen).toBe(true);
+
+    act(() => result.current.dismissCodexRestartPrompt());
+    expect(result.current.isCodexRestartPromptOpen).toBe(false);
+  });
+
+  it("restarts Codex only after the user confirms", async () => {
+    switchProviderMutateAsync.mockResolvedValueOnce(undefined);
+    settingsApiRestartCodexClientMock.mockResolvedValueOnce({
+      restartedProcesses: 1,
+    });
+    const { wrapper } = createWrapper();
+    const { result } = renderHook(() => useProviderActions("codex"), {
+      wrapper,
+    });
+
+    await act(async () => {
+      await result.current.switchProvider(
+        createProvider({ category: "custom" }),
+      );
+    });
+    expect(settingsApiRestartCodexClientMock).not.toHaveBeenCalled();
+
+    await act(async () => {
+      await result.current.restartCodexClient();
+    });
+
+    expect(settingsApiRestartCodexClientMock).toHaveBeenCalledTimes(1);
+    expect(result.current.isCodexRestartPromptOpen).toBe(false);
   });
 
   it("warns but still switches providers that require proxy when proxy is not running", async () => {

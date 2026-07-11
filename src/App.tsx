@@ -303,6 +303,9 @@ function App() {
     deleteProvider,
     saveUsageScript,
     setAsDefaultModel,
+    isCodexRestartPromptOpen,
+    dismissCodexRestartPrompt,
+    restartCodexClient,
   } = useProviderActions(
     activeApp,
     isProxyRunning,
@@ -1654,6 +1657,17 @@ function App() {
           })();
         }}
         onCancel={() => setLaunchDashboardOpen(false)}
+      />
+
+      <ConfirmDialog
+        isOpen={isCodexRestartPromptOpen}
+        title={t("confirm.codexRestart.title")}
+        message={t("confirm.codexRestart.message")}
+        confirmText={t("confirm.codexRestart.confirm")}
+        cancelText={t("confirm.codexRestart.cancel")}
+        variant="info"
+        onConfirm={() => void restartCodexClient()}
+        onCancel={dismissCodexRestartPrompt}
       />
 
       <DeepLinkImportDialog />

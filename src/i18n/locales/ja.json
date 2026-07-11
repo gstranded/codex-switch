@@ -262,6 +262,8 @@
     "openclawDefaultModelSet": "デフォルトモデルに設定しました",
     "openclawDefaultModelSetFailed": "デフォルトモデルの設定に失敗しました",
     "openclawNoModels": "モデルが設定されていません",
+    "codexRestarted": "Codex を再起動して新しい設定を読み込みました",
+    "codexRestartFailed": "Codex を自動的に再起動できませんでした。手動で閉じて再度開いてください。",
     "backfillWarning": "切り替え成功しましたが、前のプロバイダーへの設定保存に失敗しました",
     "windowControlFailed": "ウィンドウ操作に失敗しました: {{error}}",
     "officialBlockedByProxy": "ローカルルーティングモード中は公式プロバイダーに切り替えできません。ルーティング経由で公式 API にアクセスするとアカウントが停止される可能性があります。",
@@ -272,6 +274,12 @@
     "deleteProviderMessage": "プロバイダー「{{name}}」を削除してもよろしいですか？この操作は元に戻せません。",
     "removeProvider": "プロバイダーを解除",
     "removeProviderMessage": "プロバイダー「{{name}}」を設定から解除してもよろしいですか？\n\n解除後、このプロバイダーは無効になりますが、設定データは Codex Switch に保持されます。いつでも再追加できます。",
+    "codexRestart": {
+      "title": "Codex を今すぐ再起動しますか？",
+      "message": "プロバイダー設定と会話履歴は同期済みです。新しい設定を読み込むため Codex を再起動しますか？",
+      "confirm": "Codex を再起動",
+      "cancel": "今はしない"
+    },
     "proxy": {
       "title": "ローカルルーティングの有効化",
       "message": "ローカルルーティングは上級機能です。有効にする前に、その仕組みを理解していることをご確認ください。\n\n適切な設定方法については、関連ドキュメントまたはプロバイダーにご相談ください。",
@@ -447,6 +455,20 @@
     "exportFailed": "エクスポートに失敗しました",
     "selectFileFailed": "有効な SQL バックアップファイルを選択してください",
     "configCorrupted": "SQL ファイルが壊れているか形式が無効な可能性があります",
+    "chatHistory": {
+      "title": "Codex 会話履歴",
+      "description": "会話を別のコンピューターへエクスポートするか、アーカイブをインポートして現在のプロバイダーの履歴に統合します。",
+      "export": "会話履歴をエクスポート",
+      "selectImport": "会話アーカイブを選択",
+      "import": "会話履歴をインポート",
+      "securityNote": "アーカイブには会話内容とタイトルが含まれますが、API キー、ログイン認証情報、プロバイダー設定は含まれません。安全に保管してください。",
+      "selectFailed": "会話履歴アーカイブを選択できませんでした",
+      "exported": "{{count}} 件の Codex 会話をエクスポートしました",
+      "exportFailed": "会話履歴のエクスポートに失敗しました",
+      "imported": "{{count}} 件の会話をインポートし、現在のプロバイダーへ同期しました",
+      "importFailed": "会話履歴のインポートに失敗しました",
+      "importWarning": "会話履歴はインポートされましたが、ローカルインデックスの一部を統合できませんでした。Codex を再起動して再構築してください。"
+    },
     "backupId": "バックアップ ID",
     "backupManager": {
       "title": "データベースバックアップ",

@@ -43,6 +43,7 @@ import { SkillSyncMethodSettings } from "@/components/settings/SkillSyncMethodSe
 import { TerminalSettings } from "@/components/settings/TerminalSettings";
 import { DirectorySettings } from "@/components/settings/DirectorySettings";
 import { ImportExportSection } from "@/components/settings/ImportExportSection";
+import { CodexHistoryArchiveSection } from "@/components/settings/CodexHistoryArchiveSection";
 import { BackupListSection } from "@/components/settings/BackupListSection";
 import { WebdavSyncSection } from "@/components/settings/WebdavSyncSection";
 import { AboutSection } from "@/components/settings/AboutSection";
@@ -391,6 +392,7 @@ export function SettingsPage({
                             onExport={exportConfig}
                             onClear={clearSelection}
                           />
+                          <CodexHistoryArchiveSection />
                         </AccordionContent>
                       </AccordionItem>
 
