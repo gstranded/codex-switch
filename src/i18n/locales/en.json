@@ -262,6 +262,8 @@
     "openclawDefaultModelSet": "Set as default model",
     "openclawDefaultModelSetFailed": "Failed to set default model",
     "openclawNoModels": "No models configured",
+    "codexRestarted": "Codex restarted and loaded the new configuration",
+    "codexRestartFailed": "Could not restart Codex automatically. Close and reopen it manually.",
     "backfillWarning": "Switched successfully, but failed to save changes back to the previous provider",
     "windowControlFailed": "Window control failed: {{error}}",
     "officialBlockedByProxy": "Cannot switch to official provider while local routing is active. Using routing with official APIs may cause account bans.",
@@ -272,6 +274,12 @@
     "deleteProviderMessage": "Are you sure you want to delete provider \"{{name}}\"? This action cannot be undone.",
     "removeProvider": "Remove Provider",
     "removeProviderMessage": "Are you sure you want to remove provider \"{{name}}\" from the configuration?\n\nAfter removal, this provider will no longer be active, but the configuration data will be retained in Codex Switch. You can re-add it at any time.",
+    "codexRestart": {
+      "title": "Restart Codex now?",
+      "message": "The provider and chat history have been synchronized. Restart Codex now to load the new configuration?",
+      "confirm": "Restart Codex",
+      "cancel": "Not now"
+    },
     "proxy": {
       "title": "Enable Local Routing",
       "message": "Local routing is an advanced feature. Please make sure you understand how it works before enabling.\n\nWe recommend consulting the relevant documentation or your provider for proper configuration.",
@@ -447,6 +455,20 @@
     "exportFailed": "Export failed",
     "selectFileFailed": "Please choose a valid SQL backup file",
     "configCorrupted": "SQL file may be corrupted or invalid",
+    "chatHistory": {
+      "title": "Codex Chat History",
+      "description": "Export conversations for another computer, or import an archive and merge it into the current provider's history.",
+      "export": "Export Chat History",
+      "selectImport": "Select Chat Archive",
+      "import": "Import Chat History",
+      "securityNote": "The archive contains conversation content and titles, but never API keys, login credentials, or provider configuration. Keep it private.",
+      "selectFailed": "Failed to select chat-history archive",
+      "exported": "Exported {{count}} Codex sessions",
+      "exportFailed": "Failed to export chat history",
+      "imported": "Imported {{count}} sessions and synchronized them to the current provider",
+      "importFailed": "Failed to import chat history",
+      "importWarning": "Chat history was imported, but part of the local index could not be merged. Reopen Codex to rebuild it."
+    },
     "backupId": "Backup ID",
     "backupManager": {
       "title": "Database Backups",

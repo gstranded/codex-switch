@@ -262,6 +262,8 @@
     "openclawDefaultModelSet": "已設為預設模型",
     "openclawDefaultModelSetFailed": "設定預設模型失敗",
     "openclawNoModels": "該供應商沒有設定模型",
+    "codexRestarted": "Codex 已重新啟動並載入新設定",
+    "codexRestartFailed": "無法自動重新啟動 Codex，請手動關閉後重新開啟。",
     "backfillWarning": "切換成功，但舊供應商設定回填失敗，您手動修改的設定可能未儲存",
     "windowControlFailed": "視窗控制失敗：{{error}}",
     "officialBlockedByProxy": "本地路由模式下不能切換至官方供應商，使用路由存取官方 API 可能導致帳號被封鎖",
@@ -272,6 +274,12 @@
     "deleteProviderMessage": "確定要刪除供應商「{{name}}」嗎？此操作無法復原。",
     "removeProvider": "移除供應商",
     "removeProviderMessage": "確定要從設定中移除供應商「{{name}}」嗎？\n\n移除後該供應商將不再生效，但設定資料會保留在 Codex Switch 中，您可以隨時重新新增。",
+    "codexRestart": {
+      "title": "現在重新啟動 Codex？",
+      "message": "供應商設定和聊天記錄已同步。現在重新啟動 Codex 以載入新設定嗎？",
+      "confirm": "重新啟動 Codex",
+      "cancel": "暫不重新啟動"
+    },
     "proxy": {
       "title": "啟用本地路由服務",
       "message": "本地路由是一項進階功能，啟用前請確保您已了解其運作原理。\n\n建議先查閱相關文件或諮詢您的供應商，以取得正確的設定方式。",
@@ -447,6 +455,20 @@
     "exportFailed": "匯出失敗",
     "selectFileFailed": "請選擇有效的 SQL 備份檔案",
     "configCorrupted": "SQL 檔案可能已損壞或格式不正確",
+    "chatHistory": {
+      "title": "Codex 聊天記錄",
+      "description": "將會話匯出至另一台電腦，或匯入封存並合併到目前供應商的歷史記錄中。",
+      "export": "匯出聊天記錄",
+      "selectImport": "選擇聊天封存",
+      "import": "匯入聊天記錄",
+      "securityNote": "封存包含聊天內容和標題，不包含 API Key、登入憑證或供應商設定。請妥善保管檔案。",
+      "selectFailed": "選擇聊天記錄封存失敗",
+      "exported": "已匯出 {{count}} 個 Codex 會話",
+      "exportFailed": "匯出聊天記錄失敗",
+      "imported": "已匯入 {{count}} 個會話，並同步到目前供應商",
+      "importFailed": "匯入聊天記錄失敗",
+      "importWarning": "聊天記錄已匯入；部分本機索引未能合併，重新開啟 Codex 後會自動重建。"
+    },
     "backupId": "備份 ID",
     "backupManager": {
       "title": "資料庫備份",

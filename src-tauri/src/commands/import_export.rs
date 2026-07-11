@@ -8,6 +8,10 @@ use tauri_plugin_dialog::DialogExt;
 use crate::commands::sync_support::{
     post_sync_warning_from_result, run_post_import_sync, success_payload_with_warning,
 };
+use crate::codex_history_archive::{
+    export_codex_history_to_file, import_codex_history_from_file, CodexHistoryExportOutcome,
+    CodexHistoryImportOutcome,
+};
 use crate::database::backup::BackupEntry;
 use crate::database::Database;
 use crate::error::AppError;
@@ -75,6 +79,45 @@ pub async fn sync_current_providers_live(state: State<'_, AppState>) -> Result<V
     .map_err(|e: AppError| e.to_string())
 }
 
+/// Export only portable Codex conversation data. Provider settings and credentials
+/// are deliberately excluded so the archive can be shared between computers.
+#[tauri::command]
+pub async fn export_codex_history_to_file_command(
+    #[allow(non_snake_case)] filePath: String,
+) -> Result<CodexHistoryExportOutcome, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        export_codex_history_to_file(PathBuf::from(filePath).as_path())
+    })
+    .await
+    .map_err(|e| format!("Export Codex chat history failed: {e}"))?
+    .map_err(|e| e.to_string())
+}
+
+/// Import a portable Codex conversation archive, then move all imported records
+/// into the currently active provider's history bucket.
+#[tauri::command]
+pub async fn import_codex_history_from_file_command(
+    #[allow(non_snake_case)] filePath: String,
+    state: State<'_, AppState>,
+) -> Result<CodexHistoryImportOutcome, String> {
+    let db = state.db.clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        let mut outcome = import_codex_history_from_file(PathBuf::from(filePath).as_path())?;
+        if let Err(error) = crate::codex_history_migration::sync_all_codex_history_to_active_provider(
+            db.as_ref(),
+        ) {
+            log::warn!("Codex chat history import completed but provider sync failed: {error}");
+            outcome
+                .warnings
+                .push(format!("history_provider_sync_failed:{error}"));
+        }
+        Ok::<_, AppError>(outcome)
+    })
+    .await
+    .map_err(|e| format!("Import Codex chat history failed: {e}"))?
+    .map_err(|e: AppError| e.to_string())
+}
+
 // ─── File dialogs ────────────────────────────────────────────
 
 /// 保存文件对话框
@@ -119,6 +162,32 @@ pub async fn open_zip_file_dialog<R: tauri::Runtime>(
         .blocking_pick_file();
 
     Ok(result.map(|p| p.to_string()))
+}
+
+#[tauri::command]
+pub async fn save_codex_history_file_dialog<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
+    #[allow(non_snake_case)] defaultName: String,
+) -> Result<Option<String>, String> {
+    Ok(app
+        .dialog()
+        .file()
+        .add_filter("Codex Chat History", &["zip"])
+        .set_file_name(&defaultName)
+        .blocking_save_file()
+        .map(|path| path.to_string()))
+}
+
+#[tauri::command]
+pub async fn open_codex_history_file_dialog<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
+) -> Result<Option<String>, String> {
+    Ok(app
+        .dialog()
+        .file()
+        .add_filter("Codex Chat History", &["zip"])
+        .blocking_pick_file()
+        .map(|path| path.to_string()))
 }
 
 // ─── Database backup management ─────────────────────────────
