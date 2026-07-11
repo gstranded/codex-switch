@@ -133,9 +133,11 @@ pub fn import_codex_history_from_file(
     fs::create_dir_all(&config_dir).map_err(|e| AppError::io(&config_dir, e))?;
 
     let mut outcome = import_session_files(&stage_root, &config_dir)?;
-    outcome.imported_session_index_entries =
-        merge_session_index(&stage_root, &config_dir).unwrap_or_else(|error| {
-            outcome.warnings.push(format!("session_index_merge_failed:{error}"));
+    outcome.imported_session_index_entries = merge_session_index(&stage_root, &config_dir)
+        .unwrap_or_else(|error| {
+            outcome
+                .warnings
+                .push(format!("session_index_merge_failed:{error}"));
             0
         });
 
@@ -159,9 +161,9 @@ fn stage_session_root(
     let mut files = Vec::new();
     collect_jsonl_files(&source_root, &mut files)?;
     for source in files {
-        let relative = source.strip_prefix(&source_root).map_err(|e| {
-            AppError::Message(format!("Failed to build session archive path: {e}"))
-        })?;
+        let relative = source
+            .strip_prefix(&source_root)
+            .map_err(|e| AppError::Message(format!("Failed to build session archive path: {e}")))?;
         let target = stage_root.join(root_name).join(relative);
         if let Some(parent) = target.parent() {
             fs::create_dir_all(parent).map_err(|e| AppError::io(parent, e))?;
@@ -236,9 +238,9 @@ fn archive_files_from_stage(stage_root: &Path) -> Result<Vec<ArchiveFile>, AppEr
                 MAX_ARCHIVE_BYTES / 1024 / 1024 / 1024
             )));
         }
-        let relative = path.strip_prefix(stage_root).map_err(|e| {
-            AppError::Message(format!("Failed to build history archive path: {e}"))
-        })?;
+        let relative = path
+            .strip_prefix(stage_root)
+            .map_err(|e| AppError::Message(format!("Failed to build history archive path: {e}")))?;
         files.push(ArchiveFile {
             path: archive_path(relative),
             sha256: sha256_file(&path)?,
@@ -295,8 +297,8 @@ fn write_history_archive(
         .compression_method(zip::CompressionMethod::Deflated)
         .last_modified_time(DateTime::default());
 
-    let manifest_bytes = serde_json::to_vec_pretty(manifest)
-        .map_err(|source| AppError::JsonSerialize { source })?;
+    let manifest_bytes =
+        serde_json::to_vec_pretty(manifest).map_err(|source| AppError::JsonSerialize { source })?;
     writer
         .start_file("manifest.json", options)
         .map_err(|e| AppError::Message(format!("Failed to create archive manifest: {e}")))?;
@@ -345,7 +347,9 @@ fn extract_history_archive(source: &Path) -> Result<tempfile::TempDir, AppError>
             .by_name("manifest.json")
             .map_err(|_| AppError::InvalidInput("Missing archive manifest".to_string()))?;
         if entry.size() > 4 * 1024 * 1024 {
-            return Err(AppError::InvalidInput("Archive manifest is too large".to_string()));
+            return Err(AppError::InvalidInput(
+                "Archive manifest is too large".to_string(),
+            ));
         }
         let mut bytes = Vec::with_capacity(entry.size() as usize);
         entry
@@ -374,7 +378,10 @@ fn extract_history_archive(source: &Path) -> Result<tempfile::TempDir, AppError>
                 expected.path
             )));
         };
-        if archive_path(&enclosed) != expected.path || entry.is_dir() || entry.size() != expected.bytes {
+        if archive_path(&enclosed) != expected.path
+            || entry.is_dir()
+            || entry.size() != expected.bytes
+        {
             return Err(AppError::InvalidInput(format!(
                 "Archive entry metadata does not match: {}",
                 expected.path
@@ -391,7 +398,8 @@ fn extract_history_archive(source: &Path) -> Result<tempfile::TempDir, AppError>
         if let Some(parent) = destination.parent() {
             fs::create_dir_all(parent).map_err(|e| AppError::io(parent, e))?;
         }
-        let mut output = fs::File::create(&destination).map_err(|e| AppError::io(&destination, e))?;
+        let mut output =
+            fs::File::create(&destination).map_err(|e| AppError::io(&destination, e))?;
         std::io::copy(&mut entry, &mut output).map_err(|e| AppError::io(&destination, e))?;
         if sha256_file(&destination)? != expected.sha256 {
             return Err(AppError::InvalidInput(format!(
@@ -410,7 +418,9 @@ fn validate_manifest(manifest: &ArchiveManifest, archive_len: usize) -> Result<(
         ));
     }
     if manifest.files.len() > MAX_ARCHIVE_ENTRIES || archive_len != manifest.files.len() + 1 {
-        return Err(AppError::InvalidInput("Unexpected chat-history archive entries".to_string()));
+        return Err(AppError::InvalidInput(
+            "Unexpected chat-history archive entries".to_string(),
+        ));
     }
     let mut names = HashSet::new();
     for file in &manifest.files {
@@ -434,7 +444,10 @@ fn is_allowed_archive_path(path: &str) -> bool {
     let parsed = Path::new(path);
     if parsed.is_absolute()
         || parsed.components().any(|component| {
-            matches!(component, Component::ParentDir | Component::RootDir | Component::Prefix(_))
+            matches!(
+                component,
+                Component::ParentDir | Component::RootDir | Component::Prefix(_)
+            )
         })
     {
         return false;
@@ -507,8 +520,9 @@ fn session_id_from_jsonl(path: &Path) -> Result<Option<String>, AppError> {
         if !line.contains("\"session_meta\"") {
             continue;
         }
-        let value: serde_json::Value = serde_json::from_str(&line)
-            .map_err(|e| AppError::InvalidInput(format!("Invalid session JSONL {}: {e}", path.display())))?;
+        let value: serde_json::Value = serde_json::from_str(&line).map_err(|e| {
+            AppError::InvalidInput(format!("Invalid session JSONL {}: {e}", path.display()))
+        })?;
         if value.get("type").and_then(serde_json::Value::as_str) != Some("session_meta") {
             continue;
         }
@@ -564,7 +578,11 @@ fn merge_session_index(stage_root: &Path, config_dir: &Path) -> Result<usize, Ap
     }
 
     let mut imported = 0;
-    for line in BufReader::new(fs::File::open(&imported_index).map_err(|e| AppError::io(&imported_index, e))?).lines() {
+    for line in BufReader::new(
+        fs::File::open(&imported_index).map_err(|e| AppError::io(&imported_index, e))?,
+    )
+    .lines()
+    {
         let line = line.map_err(|e| AppError::io(&imported_index, e))?;
         let Some(id) = session_index_id(&line) else {
             continue;
@@ -594,7 +612,8 @@ fn merge_state_databases(stage_root: &Path, config_dir: &Path) -> Result<usize, 
     let source_root = stage_root.join("state");
     let mut snapshots = Vec::new();
     collect_files(&source_root, &mut snapshots)?;
-    snapshots.retain(|path| path.extension().and_then(|extension| extension.to_str()) == Some("sqlite"));
+    snapshots
+        .retain(|path| path.extension().and_then(|extension| extension.to_str()) == Some("sqlite"));
     if snapshots.is_empty() {
         return Ok(0);
     }
@@ -630,7 +649,9 @@ fn count_threads(path: &Path) -> Result<usize, AppError> {
         return Ok(0);
     }
     let count = connection
-        .query_row("SELECT COUNT(*) FROM threads", [], |row| row.get::<_, i64>(0))
+        .query_row("SELECT COUNT(*) FROM threads", [], |row| {
+            row.get::<_, i64>(0)
+        })
         .map_err(|e| AppError::Database(format!("Failed to count imported threads: {e}")))?;
     Ok(usize::try_from(count).unwrap_or(0))
 }
@@ -667,14 +688,18 @@ fn merge_threads_from_snapshot(source: &Path, target: &Path) -> Result<usize, Ap
     }
 
     let before = target_connection
-        .query_row("SELECT COUNT(*) FROM threads", [], |row| row.get::<_, usize>(0))
+        .query_row("SELECT COUNT(*) FROM threads", [], |row| {
+            row.get::<_, usize>(0)
+        })
         .map_err(|e| AppError::Database(format!("Failed to count local threads: {e}")))?;
     target_connection
         .execute(
             "ATTACH DATABASE ?1 AS imported_history",
             [source.to_string_lossy().to_string()],
         )
-        .map_err(|e| AppError::Database(format!("Failed to attach imported state snapshot: {e}")))?;
+        .map_err(|e| {
+            AppError::Database(format!("Failed to attach imported state snapshot: {e}"))
+        })?;
     let columns = common_columns
         .iter()
         .map(|column| quote_identifier(column))
@@ -685,10 +710,15 @@ fn merge_threads_from_snapshot(source: &Path, target: &Path) -> Result<usize, Ap
     );
     let merge_result = target_connection.execute(&sql, []);
     let detach_result = target_connection.execute_batch("DETACH DATABASE imported_history");
-    merge_result.map_err(|e| AppError::Database(format!("Failed to merge imported threads: {e}")))?;
-    detach_result.map_err(|e| AppError::Database(format!("Failed to detach imported state snapshot: {e}")))?;
+    merge_result
+        .map_err(|e| AppError::Database(format!("Failed to merge imported threads: {e}")))?;
+    detach_result.map_err(|e| {
+        AppError::Database(format!("Failed to detach imported state snapshot: {e}"))
+    })?;
     let after = target_connection
-        .query_row("SELECT COUNT(*) FROM threads", [], |row| row.get::<_, usize>(0))
+        .query_row("SELECT COUNT(*) FROM threads", [], |row| {
+            row.get::<_, usize>(0)
+        })
         .map_err(|e| AppError::Database(format!("Failed to count merged threads: {e}")))?;
     Ok(after.saturating_sub(before))
 }

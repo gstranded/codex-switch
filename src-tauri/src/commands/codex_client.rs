@@ -87,14 +87,18 @@ fn restart_codex_desktop() -> Result<CodexClientRestartResult, AppError> {
         .status()
         .map_err(|e| AppError::Message(format!("Unable to close Codex Desktop: {e}")))?;
     if !quit.success() {
-        return Err(AppError::Message("Codex Desktop did not close cleanly".to_string()));
+        return Err(AppError::Message(
+            "Codex Desktop did not close cleanly".to_string(),
+        ));
     }
     let open = Command::new("open")
         .args(["-a", "Codex"])
         .status()
         .map_err(|e| AppError::Message(format!("Unable to reopen Codex Desktop: {e}")))?;
     if !open.success() {
-        return Err(AppError::Message("Codex Desktop did not reopen".to_string()));
+        return Err(AppError::Message(
+            "Codex Desktop did not reopen".to_string(),
+        ));
     }
     Ok(CodexClientRestartResult {
         restarted_processes: 1,
