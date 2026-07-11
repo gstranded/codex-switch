@@ -3,7 +3,7 @@
 //! The archive intentionally contains conversation data only. Provider settings,
 //! auth.json, API keys, and other Codex configuration are never included.
 
-use std::collections::{BTreeSet, HashMap, HashSet};
+use std::collections::{BTreeSet, HashSet};
 use std::fs;
 use std::io::{BufRead, BufReader, Read, Write};
 use std::path::{Component, Path, PathBuf};
@@ -600,8 +600,8 @@ fn merge_session_index(stage_root: &Path, config_dir: &Path) -> Result<usize, Ap
 }
 
 fn session_index_id(line: &str) -> Option<String> {
-    let id = serde_json::from_str::<serde_json::Value>(line)
-        .ok()?
+    let value = serde_json::from_str::<serde_json::Value>(line).ok()?;
+    let id = value
         .get("id")?
         .as_str()?
         .trim();
