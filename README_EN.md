@@ -13,14 +13,14 @@ Download the latest build from [Releases / Latest](https://github.com/gstranded/
 
 Current latest assets:
 
-- `Codex-Switch-0.3.0-Windows-x64-Setup.exe`: standard Windows installer, recommended for most Windows users.
-- `Codex-Switch-0.3.0-Windows-x64.msi`: Windows MSI installer for users or deployment flows that prefer MSI.
-- `Codex-Switch-0.3.0-Windows-x64-Portable.zip`: Windows portable build. Extract and run `codex-switch.exe`.
-- `Codex-Switch-0.3.0-macOS-universal.dmg`: macOS installer for both Apple Silicon and Intel Macs.
-- `Codex-Switch-0.3.0-macOS-universal.zip`: zipped macOS `.app` bundle.
-- `Codex-Switch-0.3.0-Linux-x64.AppImage`: portable Linux build. Mark it executable and run it.
-- `Codex-Switch-0.3.0-Linux-x64.deb`: Debian / Ubuntu package.
-- `Codex-Switch-0.3.0-Linux-x64.rpm`: Fedora / RHEL / openSUSE package.
+- `Codex-Switch-0.4.0-Windows-x64-Setup.exe`: standard Windows installer, recommended for most Windows users.
+- `Codex-Switch-0.4.0-Windows-x64.msi`: Windows MSI installer for users or deployment flows that prefer MSI.
+- `Codex-Switch-0.4.0-Windows-x64-Portable.zip`: Windows portable build. Extract and run `codex-switch.exe`.
+- `Codex-Switch-0.4.0-macOS-universal.dmg`: macOS installer for both Apple Silicon and Intel Macs.
+- `Codex-Switch-0.4.0-macOS-universal.zip`: zipped macOS `.app` bundle.
+- `Codex-Switch-0.4.0-Linux-x64.AppImage`: portable Linux build. Mark it executable and run it.
+- `Codex-Switch-0.4.0-Linux-x64.deb`: Debian / Ubuntu package.
+- `Codex-Switch-0.4.0-Linux-x64.rpm`: Fedora / RHEL / openSUSE package.
 - `SHA256SUMS.txt`: checksums for release assets.
 
 This preview build is not code-signed or Apple-notarized yet. Windows may show an unknown publisher or SmartScreen warning; macOS may require right-clicking the app and choosing Open.
@@ -32,8 +32,8 @@ This preview build is not code-signed or Apple-notarized yet. Windows may show a
 - **One-click switching**: select a saved provider and apply it to the active Codex configuration.
 - **Conversation history sync**: after switching to either an official login state or an API provider, Codex Switch syncs local Codex history buckets so older conversations remain visible.
 - **Restart confirmation**: after a Codex switch, choose whether to restart Codex Desktop immediately so the new configuration takes effect.
-- **Portable chat archives**: export and import Codex conversations between computers; imported sessions merge safely and are synchronized to the current provider.
-- **Automatic backups**: creates backups before rewriting local history indexes.
+- **Complete cross-device transfer**: export and import Codex conversations, API providers, keys, and official login settings together; imported sessions merge safely and follow the current provider.
+- **Incremental safety backups**: only adds missing session backups instead of creating a full timestamped copy on every switch.
 - **Legacy data compatibility**: keeps the compatibility paths needed to reuse existing CC Switch data during this fork stage.
 
 ## Typical Workflow
@@ -56,21 +56,21 @@ After a provider switch succeeds, Codex Switch automatically:
 2. Finds known provider buckets from live config, saved provider configs, JSONL session metadata, SQLite thread rows, and built-in legacy provider ids.
 3. Rewrites `session_meta.payload.model_provider` in Codex `.jsonl` session metadata to the active provider.
 4. Rewrites `threads.model_provider` in Codex `state_5.sqlite` to the active provider.
-5. Skips backup creation when there is nothing to synchronize.
+5. Keeps one baseline backup for existing sessions, adds only newly missing sessions, and writes nothing when there is nothing to synchronize.
 
 Backups are stored under:
 
 ```text
-~/.cc-switch/backups/codex-auto-history-sync-v1/<timestamp>/
+~/.cc-switch/backups/codex-auto-history-sync-v2/
 ```
 
 The app intentionally keeps the legacy `~/.cc-switch` storage path for now to preserve compatibility with existing configuration and history data. A future `~/.codex-switch` migration should include compatibility migration logic.
 
-## Move Chat History Between Computers
+## Move Codex Data Between Computers
 
-In **Settings -> Data -> Codex Chat History**, export a `.zip` archive on the source computer and import it on the target computer. The archive contains Codex session JSONL files, session titles, and thread indexes only. It never includes API keys, provider settings, or login credentials.
+In **Settings -> Data -> Codex Data Transfer**, export a `.zip` archive on the source computer and import it on the target computer. The archive contains Codex session JSONL files, titles, thread indexes, API providers, keys, and official login settings. It contains sensitive credentials and must not be uploaded publicly or shared with others.
 
-On import, existing session IDs are kept, duplicate sessions are skipped, and newly imported sessions are immediately synchronized to the active provider. Later provider switches keep using the same history-sync path.
+On import, existing session IDs are kept, duplicates are skipped, and Windows/macOS/Linux source paths are rewritten to the real session paths on the target computer. Provider settings are restored and imported sessions are synchronized to the active provider; later switches keep using the same history-sync path.
 
 ## Notes
 
