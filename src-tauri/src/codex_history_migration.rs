@@ -27,7 +27,7 @@ use std::time::{Duration, SystemTime};
 use toml_edit::DocumentMut;
 
 const MIGRATION_NAME: &str = "codex-history-provider-migration-v1";
-const AUTO_SYNC_MIGRATION_NAME: &str = "codex-auto-history-sync-v1";
+const AUTO_SYNC_MIGRATION_NAME: &str = "codex-auto-history-sync-v2";
 const OFFICIAL_UNIFY_MIGRATION_NAME: &str = "codex-official-history-unify-v1";
 /// 还原操作自身的备份目录（与迁移备份分开，保持迁移账本目录纯净）。
 const OFFICIAL_UNIFY_RESTORE_BACKUP_NAME: &str = "codex-official-history-unify-restore-v1";
@@ -298,7 +298,10 @@ pub fn sync_all_codex_history_to_active_provider(
         });
     }
 
-    let backup_root = migration_backup_root(AUTO_SYNC_MIGRATION_NAME);
+    // Automatic provider switches use one stable incremental backup set. A
+    // timestamped generation per switch grows without bound even though only
+    // model_provider metadata changes.
+    let backup_root = incremental_auto_sync_backup_root();
     let migrated_jsonl_files = migrate_codex_jsonl_files_to_provider(
         &codex_dir,
         &source_provider_ids,
@@ -954,6 +957,12 @@ fn migration_backup_root(migration_name: &str) -> PathBuf {
         .join(Local::now().format("%Y%m%d_%H%M%S").to_string())
 }
 
+fn incremental_auto_sync_backup_root() -> PathBuf {
+    get_app_config_dir()
+        .join("backups")
+        .join(AUTO_SYNC_MIGRATION_NAME)
+}
+
 fn is_known_cc_switch_legacy_codex_model_provider_id(provider_id: &str) -> bool {
     CC_SWITCH_LEGACY_CODEX_MODEL_PROVIDER_IDS
         .iter()
@@ -1417,6 +1426,9 @@ fn backup_codex_jsonl_file(
     let backup_path = backup_root
         .join("jsonl")
         .join(relative_backup_path(path, codex_dir));
+    if backup_path.exists() {
+        return Ok(());
+    }
     copy_existing_file(path, &backup_path)
 }
 
@@ -1433,6 +1445,10 @@ fn backup_codex_state_db(
         fs::create_dir_all(parent).map_err(|e| AppError::io(parent, e))?;
     }
 
+    if backup_path.exists() && !state_backup_has_missing_threads(source_conn, &backup_path)? {
+        return Ok(());
+    }
+
     let mut backup_conn = Connection::open(&backup_path)
         .map_err(|e| AppError::Database(format!("创建 Codex state DB 备份失败: {e}")))?;
     let backup = Backup::new(source_conn, &mut backup_conn)
@@ -1441,6 +1457,49 @@ fn backup_codex_state_db(
         .run_to_completion(5, Duration::from_millis(25), None)
         .map_err(|e| AppError::Database(format!("写入 Codex state DB 备份失败: {e}")))?;
     Ok(())
+}
+
+fn state_backup_has_missing_threads(
+    source_conn: &Connection,
+    backup_path: &Path,
+) -> Result<bool, AppError> {
+    if !Database::table_exists(source_conn, "threads")?
+        || !Database::has_column(source_conn, "threads", "id")?
+    {
+        return Ok(false);
+    }
+    let backup_conn = Connection::open_with_flags(
+        backup_path,
+        rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY | rusqlite::OpenFlags::SQLITE_OPEN_NO_MUTEX,
+    )
+    .map_err(|e| AppError::Database(format!("打开 Codex state DB 备份失败: {e}")))?;
+    if !Database::table_exists(&backup_conn, "threads")?
+        || !Database::has_column(&backup_conn, "threads", "id")?
+    {
+        return Ok(true);
+    }
+
+    let mut backup_ids = HashSet::new();
+    let mut backup_stmt = backup_conn
+        .prepare("SELECT id FROM threads")
+        .map_err(|e| AppError::Database(format!("读取 Codex state DB 备份失败: {e}")))?;
+    let backup_rows = backup_stmt
+        .query_map([], |row| row.get::<_, String>(0))
+        .map_err(|e| AppError::Database(format!("查询 Codex state DB 备份失败: {e}")))?;
+    backup_ids.extend(backup_rows.flatten());
+
+    let mut source_stmt = source_conn
+        .prepare("SELECT id FROM threads")
+        .map_err(|e| AppError::Database(format!("读取 Codex state DB 会话失败: {e}")))?;
+    let source_rows = source_stmt
+        .query_map([], |row| row.get::<_, String>(0))
+        .map_err(|e| AppError::Database(format!("查询 Codex state DB 会话失败: {e}")))?;
+    for source_id in source_rows.flatten() {
+        if !backup_ids.contains(&source_id) {
+            return Ok(true);
+        }
+    }
+    Ok(false)
 }
 
 fn backup_provider_settings_config(
@@ -1950,17 +2009,48 @@ base_url = "https://deepseek.example/v1"
             .path()
             .join(".cc-switch/backups")
             .join(AUTO_SYNC_MIGRATION_NAME);
-        let generation_count = fs::read_dir(&backup_parent)
-            .expect("read backup generations")
-            .flatten()
-            .count();
-        assert_eq!(generation_count, 1);
+        let jsonl_backup = backup_parent.join("jsonl/sessions/2026/07/07/switch-sync.jsonl");
+        let state_backup = backup_parent
+            .join("state")
+            .join(relative_backup_path(&state_db_path, &codex_dir));
+        assert!(jsonl_backup.exists());
+        assert!(state_backup.exists());
+        assert!(backup_parent.join("meta.json").exists());
+        let original_backup = fs::read(&jsonl_backup).expect("read incremental backup");
 
         let second = sync_all_codex_history_to_active_provider(&db)
             .expect("rerun sync history after switch");
         assert_eq!(second.skipped_reason, Some("nothing_to_sync".to_string()));
         assert_eq!(second.migrated_jsonl_files, 0);
         assert_eq!(second.migrated_state_rows, 0);
+
+        fs::write(
+            codex_dir.join("config.toml"),
+            "model_provider = \"openai\"\n",
+        )
+        .expect("switch active provider back to openai");
+        let switched_back = sync_all_codex_history_to_active_provider(&db)
+            .expect("sync history after a second real provider switch");
+        assert_eq!(switched_back.migrated_jsonl_files, 1);
+        assert_eq!(switched_back.migrated_state_rows, 4);
+        assert_eq!(
+            fs::read(&jsonl_backup).expect("reread incremental backup"),
+            original_backup,
+            "existing session backups must not be duplicated or overwritten on each switch"
+        );
+        let timestamp_generations = fs::read_dir(&backup_parent)
+            .expect("read incremental backup root")
+            .flatten()
+            .filter(|entry| {
+                entry.file_type().is_ok_and(|kind| kind.is_dir())
+                    && entry
+                        .file_name()
+                        .to_string_lossy()
+                        .chars()
+                        .all(|ch| ch.is_ascii_digit() || ch == '_')
+            })
+            .count();
+        assert_eq!(timestamp_generations, 0);
     }
 
     #[test]

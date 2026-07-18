@@ -1,9 +1,9 @@
-//! Portable Codex chat history archives.
+//! Portable Codex workspace archives.
 //!
-//! The archive intentionally contains conversation data only. Provider settings,
-//! auth.json, API keys, and other Codex configuration are never included.
+//! Version 2 includes conversation data plus Codex provider settings. Provider
+//! settings can contain API keys or OAuth login material, so archives are secrets.
 
-use std::collections::{BTreeSet, HashSet};
+use std::collections::{BTreeSet, HashMap, HashSet};
 use std::fs;
 use std::io::{BufRead, BufReader, Read, Write};
 use std::path::{Component, Path, PathBuf};
@@ -20,11 +20,15 @@ use zip::DateTime;
 use crate::codex_config::{get_codex_config_dir, read_codex_config_text};
 use crate::codex_state_db::codex_state_db_paths;
 use crate::config::atomic_write;
+use crate::database::Database;
 use crate::error::AppError;
+use crate::provider::Provider;
 
 const ARCHIVE_FORMAT: &str = "codex-switch-chat-history";
-const ARCHIVE_VERSION: u32 = 1;
+const ARCHIVE_VERSION: u32 = 2;
+const LEGACY_ARCHIVE_VERSION: u32 = 1;
 const SESSION_INDEX_FILENAME: &str = "session_index.jsonl";
+const PROVIDER_SETTINGS_PATH: &str = "providers/codex.json";
 const MAX_ARCHIVE_ENTRIES: usize = 20_000;
 const MAX_ARCHIVE_BYTES: u64 = 4 * 1024 * 1024 * 1024;
 
@@ -34,6 +38,8 @@ pub struct CodexHistoryExportOutcome {
     pub file_path: String,
     pub session_files: usize,
     pub state_databases: usize,
+    pub providers: usize,
+    pub contains_secrets: bool,
 }
 
 #[derive(Debug, Clone, Default, Serialize)]
@@ -43,7 +49,16 @@ pub struct CodexHistoryImportOutcome {
     pub skipped_session_files: usize,
     pub imported_session_index_entries: usize,
     pub imported_state_threads: usize,
+    pub imported_providers: usize,
+    pub restored_current_provider: Option<String>,
     pub warnings: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct CodexProviderArchive {
+    providers: Vec<Provider>,
+    current_provider_id: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -64,6 +79,7 @@ struct ArchiveFile {
 }
 
 pub fn export_codex_history_to_file(
+    db: &Database,
     destination: &Path,
 ) -> Result<CodexHistoryExportOutcome, AppError> {
     let config_dir = get_codex_config_dir();
@@ -101,6 +117,8 @@ pub fn export_codex_history_to_file(
         state_databases += 1;
     }
 
+    let providers = stage_codex_providers(db, &stage_root)?;
+
     let files = archive_files_from_stage(&stage_root)?;
     if files.len() > MAX_ARCHIVE_ENTRIES {
         return Err(AppError::InvalidInput(format!(
@@ -121,10 +139,13 @@ pub fn export_codex_history_to_file(
         file_path: destination.to_string_lossy().to_string(),
         session_files,
         state_databases,
+        providers,
+        contains_secrets: providers > 0,
     })
 }
 
 pub fn import_codex_history_from_file(
+    db: &Database,
     source: &Path,
 ) -> Result<CodexHistoryImportOutcome, AppError> {
     let stage = extract_history_archive(source)?;
@@ -141,14 +162,75 @@ pub fn import_codex_history_from_file(
             0
         });
 
-    match merge_state_databases(&stage_root, &config_dir) {
+    let session_paths = collect_session_paths_by_id(&config_dir)?;
+    match merge_state_databases(&stage_root, &config_dir, &session_paths) {
         Ok(imported_threads) => outcome.imported_state_threads = imported_threads,
         Err(error) => outcome
             .warnings
             .push(format!("state_database_merge_failed:{error}")),
     }
 
+    let provider_archive = import_codex_providers(db, &stage_root)?;
+    outcome.imported_providers = provider_archive.0;
+    outcome.restored_current_provider = provider_archive.1;
+
     Ok(outcome)
+}
+
+fn stage_codex_providers(db: &Database, stage_root: &Path) -> Result<usize, AppError> {
+    let providers = db
+        .get_all_providers("codex")?
+        .into_values()
+        .collect::<Vec<_>>();
+    let payload = CodexProviderArchive {
+        current_provider_id: db.get_current_provider("codex")?,
+        providers,
+    };
+    let destination = stage_root.join(PROVIDER_SETTINGS_PATH);
+    if let Some(parent) = destination.parent() {
+        fs::create_dir_all(parent).map_err(|e| AppError::io(parent, e))?;
+    }
+    let bytes =
+        serde_json::to_vec_pretty(&payload).map_err(|source| AppError::JsonSerialize { source })?;
+    atomic_write(&destination, &bytes)?;
+    Ok(payload.providers.len())
+}
+
+fn import_codex_providers(
+    db: &Database,
+    stage_root: &Path,
+) -> Result<(usize, Option<String>), AppError> {
+    let source = stage_root.join(PROVIDER_SETTINGS_PATH);
+    if !source.is_file() {
+        return Ok((0, None));
+    }
+    let bytes = fs::read(&source).map_err(|e| AppError::io(&source, e))?;
+    let payload: CodexProviderArchive = serde_json::from_slice(&bytes).map_err(|e| {
+        AppError::InvalidInput(format!("Invalid Codex provider settings in archive: {e}"))
+    })?;
+
+    let mut imported_ids = HashSet::new();
+    for provider in &payload.providers {
+        if provider.id.trim().is_empty() {
+            return Err(AppError::InvalidInput(
+                "Imported Codex provider has an empty id".to_string(),
+            ));
+        }
+        db.save_provider("codex", provider)?;
+        imported_ids.insert(provider.id.clone());
+    }
+
+    let restored_current = payload
+        .current_provider_id
+        .filter(|id| imported_ids.contains(id));
+    if let Some(current_id) = restored_current.as_deref() {
+        db.set_current_provider("codex", current_id)?;
+        crate::settings::set_current_provider(
+            &crate::app_config::AppType::Codex,
+            Some(current_id),
+        )?;
+    }
+    Ok((payload.providers.len(), restored_current))
 }
 
 fn stage_session_root(
@@ -412,7 +494,9 @@ fn extract_history_archive(source: &Path) -> Result<tempfile::TempDir, AppError>
 }
 
 fn validate_manifest(manifest: &ArchiveManifest, archive_len: usize) -> Result<(), AppError> {
-    if manifest.format != ARCHIVE_FORMAT || manifest.version != ARCHIVE_VERSION {
+    if manifest.format != ARCHIVE_FORMAT
+        || !matches!(manifest.version, LEGACY_ARCHIVE_VERSION | ARCHIVE_VERSION)
+    {
         return Err(AppError::InvalidInput(
             "This file is not a compatible Codex Switch chat-history archive".to_string(),
         ));
@@ -424,7 +508,9 @@ fn validate_manifest(manifest: &ArchiveManifest, archive_len: usize) -> Result<(
     }
     let mut names = HashSet::new();
     for file in &manifest.files {
-        if !names.insert(file.path.clone()) || !is_allowed_archive_path(&file.path) {
+        if !names.insert(file.path.clone())
+            || !is_allowed_archive_path(&file.path, manifest.version)
+        {
             return Err(AppError::InvalidInput(format!(
                 "Unsupported archive entry: {}",
                 file.path
@@ -440,7 +526,7 @@ fn validate_manifest(manifest: &ArchiveManifest, archive_len: usize) -> Result<(
     Ok(())
 }
 
-fn is_allowed_archive_path(path: &str) -> bool {
+fn is_allowed_archive_path(path: &str, archive_version: u32) -> bool {
     let parsed = Path::new(path);
     if parsed.is_absolute()
         || parsed.components().any(|component| {
@@ -456,6 +542,7 @@ fn is_allowed_archive_path(path: &str) -> bool {
         || (path.starts_with("sessions/") && path.ends_with(".jsonl"))
         || (path.starts_with("archived_sessions/") && path.ends_with(".jsonl"))
         || (path.starts_with("state/") && path.ends_with(".sqlite"))
+        || (archive_version >= 2 && path == PROVIDER_SETTINGS_PATH)
 }
 
 fn import_session_files(
@@ -500,17 +587,23 @@ fn import_session_files(
 }
 
 fn collect_existing_session_ids(config_dir: &Path) -> Result<HashSet<String>, AppError> {
-    let mut ids = HashSet::new();
+    Ok(collect_session_paths_by_id(config_dir)?
+        .into_keys()
+        .collect())
+}
+
+fn collect_session_paths_by_id(config_dir: &Path) -> Result<HashMap<String, PathBuf>, AppError> {
+    let mut sessions = HashMap::new();
     for root_name in ["sessions", "archived_sessions"] {
         let mut files = Vec::new();
         collect_jsonl_files(&config_dir.join(root_name), &mut files)?;
         for file in files {
             if let Some(id) = session_id_from_jsonl(&file)? {
-                ids.insert(id);
+                sessions.entry(id).or_insert(file);
             }
         }
     }
-    Ok(ids)
+    Ok(sessions)
 }
 
 fn session_id_from_jsonl(path: &Path) -> Result<Option<String>, AppError> {
@@ -605,7 +698,11 @@ fn session_index_id(line: &str) -> Option<String> {
     (!id.is_empty()).then(|| id.to_string())
 }
 
-fn merge_state_databases(stage_root: &Path, config_dir: &Path) -> Result<usize, AppError> {
+fn merge_state_databases(
+    stage_root: &Path,
+    config_dir: &Path,
+    session_paths: &HashMap<String, PathBuf>,
+) -> Result<usize, AppError> {
     let source_root = stage_root.join("state");
     let mut snapshots = Vec::new();
     collect_files(&source_root, &mut snapshots)?;
@@ -626,11 +723,12 @@ fn merge_state_databases(stage_root: &Path, config_dir: &Path) -> Result<usize, 
                 }
                 fs::copy(first_snapshot, &target).map_err(|e| AppError::io(first_snapshot, e))?;
                 imported_threads += count_threads(first_snapshot)?;
+                repair_thread_rollout_paths(&target, session_paths)?;
             }
             continue;
         }
         for snapshot in &snapshots {
-            imported_threads += merge_threads_from_snapshot(snapshot, &target)?;
+            imported_threads += merge_threads_from_snapshot(snapshot, &target, session_paths)?;
         }
     }
     Ok(imported_threads)
@@ -653,7 +751,11 @@ fn count_threads(path: &Path) -> Result<usize, AppError> {
     Ok(usize::try_from(count).unwrap_or(0))
 }
 
-fn merge_threads_from_snapshot(source: &Path, target: &Path) -> Result<usize, AppError> {
+fn merge_threads_from_snapshot(
+    source: &Path,
+    target: &Path,
+    session_paths: &HashMap<String, PathBuf>,
+) -> Result<usize, AppError> {
     let source_connection = Connection::open_with_flags(
         source,
         OpenFlags::SQLITE_OPEN_READ_ONLY | OpenFlags::SQLITE_OPEN_NO_MUTEX,
@@ -717,7 +819,48 @@ fn merge_threads_from_snapshot(source: &Path, target: &Path) -> Result<usize, Ap
             row.get::<_, usize>(0)
         })
         .map_err(|e| AppError::Database(format!("Failed to count merged threads: {e}")))?;
+    drop(target_connection);
+    repair_thread_rollout_paths(target, session_paths)?;
     Ok(after.saturating_sub(before))
+}
+
+fn repair_thread_rollout_paths(
+    target: &Path,
+    session_paths: &HashMap<String, PathBuf>,
+) -> Result<usize, AppError> {
+    if session_paths.is_empty() {
+        return Ok(0);
+    }
+    let mut connection = Connection::open(target)
+        .map_err(|e| AppError::Database(format!("Failed to repair imported thread paths: {e}")))?;
+    connection
+        .busy_timeout(Duration::from_secs(5))
+        .map_err(|e| {
+            AppError::Database(format!("Failed to wait for imported state database: {e}"))
+        })?;
+    let columns = table_columns(&connection)?;
+    if !columns.iter().any(|column| column == "rollout_path") {
+        return Ok(0);
+    }
+
+    let transaction = connection
+        .transaction()
+        .map_err(|e| AppError::Database(format!("Failed to start thread path repair: {e}")))?;
+    let mut repaired = 0;
+    for (session_id, path) in session_paths {
+        repaired += transaction
+            .execute(
+                "UPDATE threads SET rollout_path = ?1 WHERE id = ?2 AND rollout_path <> ?1",
+                (path.to_string_lossy().to_string(), session_id),
+            )
+            .map_err(|e| {
+                AppError::Database(format!("Failed to rewrite imported thread path: {e}"))
+            })?;
+    }
+    transaction
+        .commit()
+        .map_err(|e| AppError::Database(format!("Failed to commit thread path repair: {e}")))?;
+    Ok(repaired)
 }
 
 fn table_columns(connection: &Connection) -> Result<Vec<String>, AppError> {
@@ -757,14 +900,19 @@ mod tests {
     use super::*;
 
     #[test]
-    fn validates_only_chat_history_archive_paths() {
-        assert!(is_allowed_archive_path("sessions/2026/06/01/session.jsonl"));
-        assert!(is_allowed_archive_path("archived_sessions/one.jsonl"));
-        assert!(is_allowed_archive_path("state/0.sqlite"));
-        assert!(is_allowed_archive_path("session_index.jsonl"));
-        assert!(!is_allowed_archive_path("../auth.json"));
-        assert!(!is_allowed_archive_path("config.toml"));
-        assert!(!is_allowed_archive_path("sessions/../auth.json"));
+    fn validates_versioned_workspace_archive_paths() {
+        assert!(is_allowed_archive_path(
+            "sessions/2026/06/01/session.jsonl",
+            2
+        ));
+        assert!(is_allowed_archive_path("archived_sessions/one.jsonl", 2));
+        assert!(is_allowed_archive_path("state/0.sqlite", 2));
+        assert!(is_allowed_archive_path("session_index.jsonl", 2));
+        assert!(is_allowed_archive_path(PROVIDER_SETTINGS_PATH, 2));
+        assert!(!is_allowed_archive_path(PROVIDER_SETTINGS_PATH, 1));
+        assert!(!is_allowed_archive_path("../auth.json", 2));
+        assert!(!is_allowed_archive_path("config.toml", 2));
+        assert!(!is_allowed_archive_path("sessions/../auth.json", 2));
     }
 
     #[test]

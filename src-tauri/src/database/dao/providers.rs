@@ -262,15 +262,23 @@ impl Database {
                 ],
             )
             .map_err(|e| AppError::Database(e.to_string()))?;
+        }
 
-            for (url, endpoint) in endpoints {
-                tx.execute(
-                    "INSERT INTO provider_endpoints (provider_id, app_type, url, added_at)
-                     VALUES (?1, ?2, ?3, ?4)",
-                    params![provider.id, app_type, url, endpoint.added_at],
-                )
-                .map_err(|e| AppError::Database(e.to_string()))?;
-            }
+        // Provider archives and edits use the Provider object as the complete
+        // source of truth. Keep custom endpoints in sync for both inserts and
+        // updates so cross-device imports do not retain stale local endpoints.
+        tx.execute(
+            "DELETE FROM provider_endpoints WHERE provider_id = ?1 AND app_type = ?2",
+            params![provider.id, app_type],
+        )
+        .map_err(|e| AppError::Database(e.to_string()))?;
+        for (url, endpoint) in endpoints {
+            tx.execute(
+                "INSERT INTO provider_endpoints (provider_id, app_type, url, added_at)
+                 VALUES (?1, ?2, ?3, ?4)",
+                params![provider.id, app_type, url, endpoint.added_at],
+            )
+            .map_err(|e| AppError::Database(e.to_string()))?;
         }
 
         tx.commit().map_err(|e| AppError::Database(e.to_string()))?;

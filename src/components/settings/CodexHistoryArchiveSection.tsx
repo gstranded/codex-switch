@@ -11,6 +11,7 @@ import {
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { settingsApi } from "@/lib/api";
 import { extractErrorMessage } from "@/utils/errorUtils";
 
@@ -27,6 +28,8 @@ export function CodexHistoryArchiveSection() {
   const [selectedFile, setSelectedFile] = useState("");
   const [isExporting, setIsExporting] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
+  const [isRestarting, setIsRestarting] = useState(false);
+  const [restartPromptOpen, setRestartPromptOpen] = useState(false);
 
   const selectedFileName = useMemo(() => {
     if (!selectedFile) return "";
@@ -52,7 +55,7 @@ export function CodexHistoryArchiveSection() {
     if (isExporting) return;
     setIsExporting(true);
     try {
-      const defaultName = `codex-switch-chat-history-${formatArchiveStamp(new Date())}.zip`;
+      const defaultName = `codex-switch-workspace-${formatArchiveStamp(new Date())}.zip`;
       const destination =
         await settingsApi.saveCodexHistoryFileDialog(defaultName);
       if (!destination) return;
@@ -86,6 +89,8 @@ export function CodexHistoryArchiveSection() {
     try {
       const result = await settingsApi.importCodexHistoryFromFile(selectedFile);
       await queryClient.invalidateQueries({ queryKey: ["sessions"] });
+      await queryClient.invalidateQueries({ queryKey: ["providers", "codex"] });
+      await queryClient.invalidateQueries({ queryKey: ["settings"] });
       toast.success(
         t("settings.chatHistory.imported", {
           defaultValue: "已导入 {{count}} 个会话，并同步到当前供应商",
@@ -102,6 +107,7 @@ export function CodexHistoryArchiveSection() {
         );
       }
       setSelectedFile("");
+      setRestartPromptOpen(true);
     } catch (error) {
       toast.error(
         extractErrorMessage(error) ||
@@ -111,6 +117,29 @@ export function CodexHistoryArchiveSection() {
       );
     } finally {
       setIsImporting(false);
+    }
+  };
+
+  const restartCodex = async () => {
+    if (isRestarting) return;
+    setIsRestarting(true);
+    try {
+      await settingsApi.restartCodexClient();
+      toast.success(
+        t("settings.chatHistory.restartSuccess", {
+          defaultValue: "Codex 已重新打开并加载导入的数据",
+        }),
+      );
+      setRestartPromptOpen(false);
+    } catch (error) {
+      toast.error(
+        extractErrorMessage(error) ||
+          t("settings.chatHistory.restartFailed", {
+            defaultValue: "无法自动重新打开 Codex，请手动退出后再打开",
+          }),
+      );
+    } finally {
+      setIsRestarting(false);
     }
   };
 
@@ -183,6 +212,23 @@ export function CodexHistoryArchiveSection() {
       <p className="text-xs leading-relaxed text-muted-foreground">
         {t("settings.chatHistory.securityNote")}
       </p>
+
+      <ConfirmDialog
+        isOpen={restartPromptOpen}
+        title={t("settings.chatHistory.restartTitle")}
+        message={t("settings.chatHistory.restartMessage")}
+        confirmText={
+          isRestarting
+            ? t("common.loading")
+            : t("settings.chatHistory.restartConfirm")
+        }
+        cancelText={t("settings.chatHistory.restartLater")}
+        variant="info"
+        onConfirm={() => void restartCodex()}
+        onCancel={() => {
+          if (!isRestarting) setRestartPromptOpen(false);
+        }}
+      />
     </section>
   );
 }

@@ -30,6 +30,8 @@ export interface CodexHistoryExportResult {
   filePath: string;
   sessionFiles: number;
   stateDatabases: number;
+  providers: number;
+  containsSecrets: boolean;
 }
 
 export interface CodexHistoryImportResult {
@@ -37,6 +39,8 @@ export interface CodexHistoryImportResult {
   skippedSessionFiles: number;
   importedSessionIndexEntries: number;
   importedStateThreads: number;
+  importedProviders: number;
+  restoredCurrentProvider?: string;
   warnings: string[];
 }
 

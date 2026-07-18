@@ -79,14 +79,16 @@ pub async fn sync_current_providers_live(state: State<'_, AppState>) -> Result<V
     .map_err(|e: AppError| e.to_string())
 }
 
-/// Export only portable Codex conversation data. Provider settings and credentials
-/// are deliberately excluded so the archive can be shared between computers.
+/// Export Codex conversations plus provider settings. The resulting archive can
+/// contain API keys and OAuth login material and must be handled as a secret.
 #[tauri::command]
 pub async fn export_codex_history_to_file_command(
     #[allow(non_snake_case)] filePath: String,
+    state: State<'_, AppState>,
 ) -> Result<CodexHistoryExportOutcome, String> {
+    let db = state.db.clone();
     tauri::async_runtime::spawn_blocking(move || {
-        export_codex_history_to_file(PathBuf::from(filePath).as_path())
+        export_codex_history_to_file(db.as_ref(), PathBuf::from(filePath).as_path())
     })
     .await
     .map_err(|e| format!("Export Codex chat history failed: {e}"))?
@@ -102,7 +104,15 @@ pub async fn import_codex_history_from_file_command(
 ) -> Result<CodexHistoryImportOutcome, String> {
     let db = state.db.clone();
     tauri::async_runtime::spawn_blocking(move || {
-        let mut outcome = import_codex_history_from_file(PathBuf::from(filePath).as_path())?;
+        let mut outcome =
+            import_codex_history_from_file(db.as_ref(), PathBuf::from(filePath).as_path())?;
+        let imported_state = AppState::new(db.clone());
+        if let Err(error) = ProviderService::sync_current_to_live(&imported_state) {
+            log::warn!("Codex workspace import completed but live provider sync failed: {error}");
+            outcome
+                .warnings
+                .push(format!("live_provider_sync_failed:{error}"));
+        }
         if let Err(error) =
             crate::codex_history_migration::sync_all_codex_history_to_active_provider(db.as_ref())
         {

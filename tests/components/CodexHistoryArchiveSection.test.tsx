@@ -8,6 +8,7 @@ const saveDialogMock = vi.fn();
 const openDialogMock = vi.fn();
 const exportHistoryMock = vi.fn();
 const importHistoryMock = vi.fn();
+const restartCodexMock = vi.fn();
 const toastSuccessMock = vi.fn();
 const toastErrorMock = vi.fn();
 const toastWarningMock = vi.fn();
@@ -20,6 +21,7 @@ vi.mock("@/lib/api", () => ({
       exportHistoryMock(...args),
     importCodexHistoryFromFile: (...args: unknown[]) =>
       importHistoryMock(...args),
+    restartCodexClient: (...args: unknown[]) => restartCodexMock(...args),
   },
 }));
 
@@ -45,6 +47,7 @@ beforeEach(() => {
   openDialogMock.mockReset();
   exportHistoryMock.mockReset();
   importHistoryMock.mockReset();
+  restartCodexMock.mockReset();
   toastSuccessMock.mockReset();
   toastErrorMock.mockReset();
   toastWarningMock.mockReset();
@@ -58,6 +61,8 @@ describe("CodexHistoryArchiveSection", () => {
       filePath: "C:/exports/chat-history.zip",
       sessionFiles: 3,
       stateDatabases: 1,
+      providers: 2,
+      containsSecrets: true,
     });
     renderSection();
 
@@ -80,8 +85,11 @@ describe("CodexHistoryArchiveSection", () => {
       skippedSessionFiles: 1,
       importedSessionIndexEntries: 2,
       importedStateThreads: 2,
+      importedProviders: 2,
+      restoredCurrentProvider: "official-codex",
       warnings: [],
     });
+    restartCodexMock.mockResolvedValueOnce({ restartedProcesses: 1 });
     renderSection();
 
     await user.click(
@@ -99,5 +107,15 @@ describe("CodexHistoryArchiveSection", () => {
       "C:/imports/portable-history.zip",
     );
     expect(toastSuccessMock).toHaveBeenCalledTimes(1);
+    expect(
+      screen.getByText("settings.chatHistory.restartTitle"),
+    ).toBeInTheDocument();
+
+    await user.click(
+      screen.getByRole("button", {
+        name: "settings.chatHistory.restartConfirm",
+      }),
+    );
+    expect(restartCodexMock).toHaveBeenCalledTimes(1);
   });
 });
