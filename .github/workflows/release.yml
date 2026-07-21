@@ -40,7 +40,7 @@ jobs:
 
     steps:
       - name: Checkout release source
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           ref: ${{ inputs.release_tag }}
 
@@ -239,7 +239,7 @@ jobs:
       GH_TOKEN: ${{ github.token }}
     steps:
       - name: Checkout release notes
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           ref: ${{ inputs.release_tag }}
 
