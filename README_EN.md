@@ -13,14 +13,14 @@ Download the latest build from [Releases / Latest](https://github.com/gstranded/
 
 Current latest assets:
 
-- `Codex-Switch-0.4.0-Windows-x64-Setup.exe`: standard Windows installer, recommended for most Windows users.
-- `Codex-Switch-0.4.0-Windows-x64.msi`: Windows MSI installer for users or deployment flows that prefer MSI.
-- `Codex-Switch-0.4.0-Windows-x64-Portable.zip`: Windows portable build. Extract and run `codex-switch.exe`.
-- `Codex-Switch-0.4.0-macOS-universal.dmg`: macOS installer for both Apple Silicon and Intel Macs.
-- `Codex-Switch-0.4.0-macOS-universal.zip`: zipped macOS `.app` bundle.
-- `Codex-Switch-0.4.0-Linux-x64.AppImage`: portable Linux build. Mark it executable and run it.
-- `Codex-Switch-0.4.0-Linux-x64.deb`: Debian / Ubuntu package.
-- `Codex-Switch-0.4.0-Linux-x64.rpm`: Fedora / RHEL / openSUSE package.
+- `Codex-Switch-0.4.1-Windows-x64-Setup.exe`: standard Windows installer, recommended for most Windows users.
+- `Codex-Switch-0.4.1-Windows-x64.msi`: Windows MSI installer for users or deployment flows that prefer MSI.
+- `Codex-Switch-0.4.1-Windows-x64-Portable.zip`: Windows portable build. Extract and run `codex-switch.exe`.
+- `Codex-Switch-0.4.1-macOS-universal.dmg`: macOS installer for both Apple Silicon and Intel Macs.
+- `Codex-Switch-0.4.1-macOS-universal.zip`: zipped macOS `.app` bundle.
+- `Codex-Switch-0.4.1-Linux-x64.AppImage`: portable Linux build. Mark it executable and run it.
+- `Codex-Switch-0.4.1-Linux-x64.deb`: Debian / Ubuntu package.
+- `Codex-Switch-0.4.1-Linux-x64.rpm`: Fedora / RHEL / openSUSE package.
 - `SHA256SUMS.txt`: checksums for release assets.
 
 This preview build is not code-signed or Apple-notarized yet. Windows may show an unknown publisher or SmartScreen warning; macOS may require right-clicking the app and choosing Open.

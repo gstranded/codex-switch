@@ -25,15 +25,23 @@ fn windows_restart_script() -> &'static str {
     // crashes the shell, so only target the top-level desktop process.
     r#"
 $ErrorActionPreference = 'Stop'
-$targets = @(Get-CimInstance Win32_Process |
-  Where-Object {
-    $_.ExecutablePath -and
-    $_.Name -in @('ChatGPT.exe', 'Codex.exe') -and
-    $_.CommandLine -notmatch '(^|\s)--type=' -and
-    $_.ExecutablePath -notmatch '\\resources\\codex\.exe$' -and
-    $_.ExecutablePath -notmatch 'Codex[ -]Switch'
-  } |
-  Sort-Object ProcessId)
+function Get-CodexDesktopWindows {
+  @(Get-CimInstance Win32_Process |
+    Where-Object {
+      $_.ExecutablePath -and
+      $_.Name -in @('ChatGPT.exe', 'Codex.exe') -and
+      $_.CommandLine -notmatch '(^|\s)--type=' -and
+      $_.ExecutablePath -notmatch '\\resources\\codex\.exe$' -and
+      $_.ExecutablePath -notmatch 'Codex[ -]Switch'
+    } |
+    Where-Object {
+      $process = Get-Process -Id $_.ProcessId -ErrorAction SilentlyContinue
+      $process -and $process.MainWindowHandle -ne 0
+    } |
+    Sort-Object ProcessId)
+}
+
+$targets = @(Get-CodexDesktopWindows)
 $paths = @($targets | ForEach-Object { $_.ExecutablePath } | Select-Object -Unique)
 $startApp = Get-StartApps |
   Where-Object { $_.Name -match '^(Codex|ChatGPT)$' -and $_.Name -notmatch 'Switch' } |
@@ -69,6 +77,17 @@ if ($startApp) {
   exit 3
 }
 
+$launchDeadline = [DateTime]::UtcNow.AddSeconds(15)
+do {
+  $launched = @(Get-CodexDesktopWindows)
+  if ($launched.Count -gt 0) { break }
+  Start-Sleep -Milliseconds 150
+} while ([DateTime]::UtcNow -lt $launchDeadline)
+if ($launched.Count -eq 0) {
+  [Console]::Error.WriteLine('Codex Desktop was launched but no main window appeared.')
+  exit 5
+}
+
 Write-Output "CODEX_SWITCH_RESTARTED:$([Math]::Max(1, $targets.Count))"
 "#
 }
@@ -94,6 +113,12 @@ fn restart_codex_desktop() -> Result<CodexClientRestartResult, AppError> {
     if output.status.code() == Some(4) {
         return Err(AppError::Message(
             "Codex Desktop did not close cleanly, so Codex Switch left it running instead of force-closing it. Quit Codex once and try again.".to_string(),
+        ));
+    }
+    if output.status.code() == Some(5) {
+        return Err(AppError::Message(
+            "Codex Desktop was launched, but its main window did not appear within 15 seconds."
+                .to_string(),
         ));
     }
     if !output.status.success() {
@@ -218,9 +243,11 @@ mod tests {
     fn restart_script_closes_shell_and_never_kills_the_app_server() {
         assert!(super::windows_restart_script().contains("--type="));
         assert!(super::windows_restart_script().contains("CloseMainWindow"));
+        assert!(super::windows_restart_script().contains("MainWindowHandle -ne 0"));
         assert!(super::windows_restart_script().contains("Get-StartApps"));
         assert!(super::windows_restart_script().contains("shell:AppsFolder"));
         assert!(super::windows_restart_script().contains("resources\\codex"));
+        assert!(super::windows_restart_script().contains("exit 5"));
         assert!(!super::windows_restart_script().contains("Stop-Process"));
     }
 }
